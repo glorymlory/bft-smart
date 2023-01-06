@@ -245,6 +245,8 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
 //                System.out.println("acceptSentTime : " + msgCtx.getFirstInBatch().acceptSentTime);
                 consensusLatency.store(msgCtx.getFirstInBatch().decisionTime - msgCtx.getFirstInBatch().consensusStartTime);
                 long temp = msgCtx.getFirstInBatch().consensusStartTime - msgCtx.getFirstInBatch().receptionTime;
+                System.out.println("msgCtx.getFirstInBatch().consensusStartTime "  + msgCtx.getFirstInBatch().consensusStartTime);
+                System.out.println("msgCtx.getFirstInBatch().receptionTime "  + msgCtx.getFirstInBatch().receptionTime);
                 preConsLatency.store(temp > 0 ? temp : 0);
                 posConsLatency.store(msgCtx.getFirstInBatch().executedTime - msgCtx.getFirstInBatch().decisionTime);            
                 proposeLatency.store(msgCtx.getFirstInBatch().writeSentTime - msgCtx.getFirstInBatch().consensusStartTime);
@@ -279,7 +281,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
         }
         
         float tp = -1;
-        System.out.println("iterations : " + iterations  + "interval: " + interval);
+        System.out.println("iterations : " + iterations  + " interval: " + interval);
         if(iterations % interval == 0) {
             if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");
             

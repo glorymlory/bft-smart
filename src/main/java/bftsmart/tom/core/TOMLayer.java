@@ -48,7 +48,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 /**
  * This class implements the state machine replication protocol described in
@@ -106,6 +108,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private final Condition haveMessages = messagesLock.newCondition();
     private final ReentrantLock proposeLock = new ReentrantLock();
     private final Condition canPropose = proposeLock.newCondition();
+    private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
+    private final Lock readLastExecLock = rwLock.readLock();
+    private final Lock setLastExecLock = rwLock.writeLock();
 
     private final PrivateKey privateKey;
     private final HashMap<Integer, PublicKey> publicKey;
@@ -266,8 +271,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param last ID of the consensus which was last to be executed
      */
     public void setLastExec(int last) {
-        logger.debug("Setting last exec to " + last);
-        this.lastExecuted = last;
+        setLastExecLock.lock();
+        try {
+            logger.debug("Setting last exec to " + last);
+            this.lastExecuted = last;
+        } finally {
+            setLastExecLock.unlock();
+        }
     }
 
     /**
@@ -276,7 +286,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @return ID of the consensus which was established as the last executed
      */
     public int getLastExec() {
-        return this.lastExecuted;
+        readLastExecLock.lock();
+        try {
+            return this.lastExecuted;
+        } finally {
+            readLastExecLock.unlock();
+        }
     }
 
     /**
@@ -312,6 +327,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         try {
             logger.debug("Waiting {}ms ...", pipelineManager.getAmountOfMillisecondsToWait());
             Thread.sleep(pipelineManager.getAmountOfMillisecondsToWait());
+            logger.debug("Continue ...");
         } catch (InterruptedException ex) {
             ex.printStackTrace();
         }
@@ -440,10 +456,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 canPropose.awaitUninterruptibly();
             }
 //            TODO create proposeEnded check
-//            if(getInExec() != -1 && execManager.getConsensus(getInExec()).getLastEpoch()!=null && execManager.getConsensus(getInExec()).getLastEpoch().isWriteSent()) {
-//                logger.debug("Waiting for consensus " + getInExec() + " finish propose phase.");
-//                canPropose.awaitUninterruptibly();
-//            }
+            if(getInExec() != -1 && execManager.getConsensus(getInExec()).getLastEpoch()!=null && execManager.getConsensus(getInExec()).getLastEpoch().isWriteSent()) {
+                logger.debug("Waiting for consensus " + getInExec() + " finish propose phase.");
+                canPropose.awaitUninterruptibly();
+            }
             proposeLock.unlock();
 
             if (!doWork) break;
@@ -473,6 +489,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // Sets the current consensus
 //                int execId = getLastExec() + 1;
+                logger.debug("getLastExec() {}", getLastExec());
+                logger.debug("pipelineManager.getConsensusesInExecutionList().isEmpty(): {}", pipelineManager.getConsensusesInExecutionList().size());
+
                 int execId = getLastExec() + (pipelineManager.getConsensusesInExecutionList().isEmpty() ? 1 : (pipelineManager.getConsensusesInExecutionList().size() + 1));
                 setInExec(execId);
 
@@ -503,12 +522,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                remove thread.sleep and instead just do check everytime we want to start a new cons :) and if already allowed we start.
 //                but what if no invocation of the method that do signalAll. Then we anyway have to check it regularly.
 //                CHECK IT AGAIN.: looks like working good.
-                proposeLock.lock();
-                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-                    logger.debug("Waiting before starting new consensus...");
-                    setDelayBeforeConsStartInPipeline();
-                }
-                proposeLock.unlock();
+//                proposeLock.lock();
+//                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+//                    logger.debug("Waiting before starting new consensus...");
+//                    setDelayBeforeConsStartInPipeline();
+//                }
+//                proposeLock.unlock();
 
                 logger.info("=====Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
                 execManager.getProposer().startConsensus(execId, createPropose(dec));

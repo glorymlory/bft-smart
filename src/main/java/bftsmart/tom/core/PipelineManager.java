@@ -43,11 +43,11 @@ public class PipelineManager {
 
     public boolean isDelayedBeforeNewConsensusStart() {
         long currTimestamp = System.nanoTime();
-        logger.debug("Current timestamp for starting new consensus: {}", currTimestamp);
+        logger.debug("Current timestamp for starting new consensus: {} and the previous cons. start time", currTimestamp, timestampOfLastConsensusProposed);
         if (timestampOfLastConsensusProposed != 0) {
             long differenceInNanoBetweenConsensuses = currTimestamp - timestampOfLastConsensusProposed;
             long differenceInMillisecBetweenConsensuses = TimeUnit.MILLISECONDS.convert(differenceInNanoBetweenConsensuses, TimeUnit.NANOSECONDS);
-            logger.debug("Difference In Millisecond Between Consensuses: {}", differenceInMillisecBetweenConsensuses);
+            logger.debug("Difference In Millisecond Between Consensuses: {} and original value {}", differenceInMillisecBetweenConsensuses, differenceInNanoBetweenConsensuses);
             return (differenceInMillisecBetweenConsensuses >= delayBeforeNewConsensusProposeInMillisec) ? true : false;
         } else {
             return true; // no consensuses in exec.

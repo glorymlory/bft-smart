@@ -318,7 +318,6 @@ public class ThroughputLatencyClient {
                 if (verbose) System.out.println(this.id + " // sent!");
                 st.store(latency);
 
-
                 try {
 
                     //sleeps interval ms before sending next request
@@ -341,7 +340,6 @@ public class ThroughputLatencyClient {
                     ex.printStackTrace();
                 }
 
-
                 if (verbose && (req % 1000 == 0)) System.out.println(this.id + " // " + req + " operations sent!");
             }
             long endExpTime = System.nanoTime();
@@ -356,7 +354,6 @@ public class ThroughputLatencyClient {
             }
 
             System.out.println("Finished! Continue to send operations");
-
             for (int i = 0; i < 2*numberOfOps; i++, req++) {
                 long last_send_instant = System.nanoTime();
                 if (verbose) System.out.print(this.id + " // Sending req " + req + "...");

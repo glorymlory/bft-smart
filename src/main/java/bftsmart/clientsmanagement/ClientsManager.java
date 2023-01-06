@@ -349,7 +349,6 @@ public class ClientsManager {
             Signature engine = benchEngines.get(Thread.currentThread().getName());
             
             if (engine == null) {
-                
                 try {
                     engine = TOMUtil.getSigEngine();
                     engine.initVerify(controller.getStaticConf().getPublicKey());
