@@ -458,29 +458,30 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until the current consensus finishes
             proposeLock.lock();
+            logger.debug("getInExec : {} pipelineManager.getConsensusesInExecutionList().size() : {}",getInExec(), pipelineManager.getConsensusesInExecutionList().size());
             if (getInExec() != -1 && pipelineManager.getConsensusesInExecutionList().size() == pipelineManager.maxConsensusesInExec) { //there are already max amount of consensus running
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
             }
 
-            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
-                int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
-
-                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
-                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
-                } else {
-                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
-                }
-
-                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
-                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
-                    canProposeInPipeline.awaitUninterruptibly();
-                }
-                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
-                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
-                    canProposeInPipeline.awaitUninterruptibly();
-                }
-            }
+//            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
+//                int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
+//
+//                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
+//                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
+//                } else {
+//                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
+//                }
+//
+//                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
+//                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+//                    canProposeInPipeline.awaitUninterruptibly();
+//                }
+//                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
+//                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+//                    canProposeInPipeline.awaitUninterruptibly();
+//                }
+//            }
 
             proposeLock.unlock();
 
@@ -545,12 +546,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                remove thread.sleep and instead just do check everytime we want to start a new cons :) and if already allowed we start.
 //                but what if no invocation of the method that do signalAll. Then we anyway have to check it regularly.
 //                CHECK IT AGAIN.: looks like working good.
-//                proposeLock.lock();
-//                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-//                    logger.debug("Waiting before starting new consensus...");
-//                    setDelayBeforeConsStartInPipeline();
-//                }
-//                proposeLock.unlock();
+                proposeLock.lock();
+                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+                    logger.debug("Waiting before starting new consensus...");
+                    setDelayBeforeConsStartInPipeline();
+                }
+                proposeLock.unlock();
 
                 logger.info("=====Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
                 execManager.getProposer().startConsensus(execId, createPropose(dec));

@@ -305,7 +305,7 @@ public class ThroughputLatencyClient {
                 totalLatency += System.nanoTime() - last_send_instant;
                 System.out.println("Latency for " + id + ": " + latency);
 
-                if(i%10==0 || (i-1)==numberOfOps/2) {
+                if(i%100==0 || (i-1)==numberOfOps/2) {
                     System.out.println("Total latency for Client: " + id + " for last 10 requests : " + totalLatency);
                 }
 
@@ -363,12 +363,7 @@ public class ThroughputLatencyClient {
                 else
                     proxy.invokeOrdered(request);
                 long latency = System.nanoTime() - last_send_instant;
-                totalLatency += System.nanoTime() - last_send_instant;
-                System.out.println("Latency for " + id + ": " + latency);
 
-                if(i%10==0 || (i-1)==numberOfOps) {
-                    System.out.println("Total latency for Client: " + id + " for last 10 requests : " + totalLatency);
-                }
                 try {
                     latencies.put(id + "\t" + System.currentTimeMillis() + "\t" + latency + "\n");
                 } catch (InterruptedException ex) {
