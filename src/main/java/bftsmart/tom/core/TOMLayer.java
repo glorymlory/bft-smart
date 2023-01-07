@@ -458,7 +458,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until the current consensus finishes
             proposeLock.lock();
-            logger.debug("getInExec : {} pipelineManager.getConsensusesInExecutionList().size() : {}",getInExec(), pipelineManager.getConsensusesInExecutionList().size());
+            logger.debug("getInExec : {} pipelineManager.getConsensusesInExecutionList().size() : {} , maxConsensusesInExec : {}",getInExec(), pipelineManager.getConsensusesInExecutionList().size(), pipelineManager.maxConsensusesInExec);
             if (getInExec() != -1 && pipelineManager.getConsensusesInExecutionList().size() == pipelineManager.maxConsensusesInExec) { //there are already max amount of consensus running
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
