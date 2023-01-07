@@ -108,9 +108,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private final Condition haveMessages = messagesLock.newCondition();
     private final ReentrantLock proposeLock = new ReentrantLock();
     private final Condition canPropose = proposeLock.newCondition();
+    private final Condition canProposeInPipeline = proposeLock.newCondition();
+
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
-    private final Lock readLastExecLock = rwLock.readLock();
-    private final Lock setLastExecLock = rwLock.writeLock();
+    private final Lock readPipelineCIDLock = rwLock.readLock();
+    private final Lock writePipelineCIDLock = rwLock.writeLock();
 
     private final PrivateKey privateKey;
     private final HashMap<Integer, PublicKey> publicKey;
@@ -271,13 +273,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param last ID of the consensus which was last to be executed
      */
     public void setLastExec(int last) {
-        setLastExecLock.lock();
-        try {
-            logger.debug("Setting last exec to " + last);
-            this.lastExecuted = last;
-        } finally {
-            setLastExecLock.unlock();
-        }
+        logger.debug("Setting last exec to " + last);
+        this.lastExecuted = last;
+    }
+
+    public void setLastExecAndRemoveInExec(int last) {
+        writePipelineCIDLock.lock();
+        setLastExec(last);
+        removeInExec(last);
+        writePipelineCIDLock.unlock();
     }
 
     /**
@@ -286,11 +290,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @return ID of the consensus which was established as the last executed
      */
     public int getLastExec() {
-        readLastExecLock.lock();
-        try {
-            return this.lastExecuted;
-        } finally {
-            readLastExecLock.unlock();
+        return this.lastExecuted;
+    }
+
+    public void writeSent(int cid) {
+        if (pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1) == cid) {
+            proposeLock.lock();
+            canProposeInPipeline.signalAll();
+            proposeLock.unlock();
         }
     }
 
@@ -416,7 +423,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (dec.getConsensusId() > -1) { // if this is from the leader change, it doesnt matter
             dec.firstMessageProposed = pendingRequests.getFirst();
             dec.firstMessageProposed.consensusStartTime = System.nanoTime();
-            logger.debug("Consensus start time: {}",dec.firstMessageProposed.consensusStartTime);
+            logger.debug("Consensus start time: {}", dec.firstMessageProposed.consensusStartTime);
         }
         dec.batchSize = numberOfMessages;
 
@@ -455,12 +462,28 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
             }
-//            TODO create proposeEnded check
-            if(getInExec() != -1 && execManager.getConsensus(getInExec()).getLastEpoch()!=null && execManager.getConsensus(getInExec()).getLastEpoch().isWriteSent()) {
-                logger.debug("Waiting for consensus " + getInExec() + " finish propose phase.");
-                canPropose.awaitUninterruptibly();
+
+            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
+                int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
+
+                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
+                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
+                } else {
+                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
+                }
+
+                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
+                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+                    canProposeInPipeline.awaitUninterruptibly();
+                }
+                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
+                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+                    canProposeInPipeline.awaitUninterruptibly();
+                }
             }
+
             proposeLock.unlock();
+
 
             if (!doWork) break;
 
@@ -489,10 +512,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // Sets the current consensus
 //                int execId = getLastExec() + 1;
-                logger.debug("getLastExec() {}", getLastExec());
-                logger.debug("pipelineManager.getConsensusesInExecutionList().isEmpty(): {}", pipelineManager.getConsensusesInExecutionList().size());
-
+                readPipelineCIDLock.lock();
+                logger.debug("getLastExec() : {} pipelineManager.getConsensusesInExecutionList().size() : {}", getLastExec(), pipelineManager.getConsensusesInExecutionList().size());
                 int execId = getLastExec() + (pipelineManager.getConsensusesInExecutionList().isEmpty() ? 1 : (pipelineManager.getConsensusesInExecutionList().size() + 1));
+                readPipelineCIDLock.unlock();
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();

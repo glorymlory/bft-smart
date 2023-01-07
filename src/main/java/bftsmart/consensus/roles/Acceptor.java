@@ -236,6 +236,7 @@ public final class Acceptor {
 					computeWrite(cid, epoch, epoch.propValueHash);
 
 					logger.debug("WRITE computed for cId:{}, I am:{}", cid, me);
+					tomLayer.writeSent(cid);
 
 				} else {
 					epoch.setAccept(me, epoch.propValueHash);

@@ -108,10 +108,10 @@ public final class DeliveryThread extends Thread {
 
 			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
 			// set this decision as the last one from this replica
-			tomLayer.setLastExec(dec.getConsensusId());
+//			tomLayer.setLastExec(dec.getConsensusId());
 			// define that end of this execution
 //			tomLayer.setInExec(-1);
-			tomLayer.removeInExec(dec.getConsensusId());
+			tomLayer.setLastExecAndRemoveInExec(dec.getConsensusId());
 		} // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
 		// System.exit(0);
 		else {
@@ -311,10 +311,11 @@ public final class DeliveryThread extends Thread {
 
 						// set the consensus associated to the last decision as the last executed
 						logger.debug("Setting last executed consensus to " + lastDecision.getConsensusId());
-						tomLayer.setLastExec(lastDecision.getConsensusId());
+//						tomLayer.setLastExec(lastDecision.getConsensusId());
 						// define that end of this execution
 //						tomLayer.setInExec(-1);
-						tomLayer.removeInExec(lastDecision.getConsensusId());
+//						tomLayer.removeInExec(lastDecision.getConsensusId());
+						tomLayer.setLastExecAndRemoveInExec(lastDecision.getConsensusId());
 						// ******* EDUARDO END **************//
 
 						lastReconfig = -2;
