@@ -275,8 +275,8 @@ public final class Acceptor {
 	 */
 	private void writeReceived(Epoch epoch, int sender, byte[] value) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("WRITE received from:{}, for consensus cId:{}", 
-				sender, cid);
+		logger.debug("WRITE received from:{}, for consensus cId:{} at timestamp (nano): {}",
+				sender, cid, System.nanoTime());
 		epoch.setWrite(sender, value);
 
 		computeWrite(cid, epoch, value);
@@ -409,7 +409,7 @@ public final class Acceptor {
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid);
+		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
 		epoch.setAccept(msg.getSender(), msg.getValue());
 		epoch.addToProof(msg);
 
