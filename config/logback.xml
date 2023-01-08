@@ -51,7 +51,7 @@
     <logger name="bftsmart.tom.core.Synchronizer" level="TRACE"></logger>
     <logger name="bftsmart.tom.core.DeliveryThread" level="TRACE"></logger>
     <logger name="bftsmart.statemanagement.StateManager" level="TRACE"></logger>
-<!--    <logger name="bftsmart.clientsmanagement.ClientsManager" level="DEBUG"></logger>-->
+    <logger name="bftsmart.clientsmanagement.ClientsManager" level="TRACE"></logger>
     <logger name="bftsmart.tom.ServiceReplica" level="TRACE"></logger>
     <!--  <logger name="bftsmart.tom.util.ShutdownHookThread" level="DEBUG"></logger>-->
 </configuration>
