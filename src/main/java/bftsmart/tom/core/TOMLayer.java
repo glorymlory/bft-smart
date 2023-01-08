@@ -443,6 +443,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     @Override
     public void run() {
         logger.debug("Running."); // TODO: can't this be outside of the loop?
+        int kk = 0;
         while (doWork) {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
@@ -485,6 +486,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                    canProposeInPipeline.awaitUninterruptibly();
 //                }
 //            }
+            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
+            kk++;
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
                 logger.debug("Waiting before starting new consensus...");
                 setDelayBeforeConsStartInPipeline();

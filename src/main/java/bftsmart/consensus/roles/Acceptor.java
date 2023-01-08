@@ -185,7 +185,7 @@ public final class Acceptor {
 	private void executePropose(Epoch epoch, byte[] value) {
 		int cid = epoch.getConsensus().getId();
 		logger.debug("Executing propose for cId:{}, Epoch Timestamp:{}", cid, epoch.getTimestamp());
-
+		logger.debug("THREAD  id in executePropose startt :  {}", Thread.currentThread().getId());
 		long consensusStartTime = System.nanoTime();
 
 		if (epoch.propValue == null) { // only accept one propose per epoch
@@ -220,6 +220,7 @@ public final class Acceptor {
 
 				if (controller.getStaticConf().isBFT()) {
 					logger.debug("Sending WRITE for " + cid);
+					logger.debug("THREAD  id in executePropose WRITE SENT :  {}", Thread.currentThread().getId());
 
 					epoch.setWrite(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
