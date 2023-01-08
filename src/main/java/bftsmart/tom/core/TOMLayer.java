@@ -44,9 +44,7 @@ import java.security.*;
 import java.util.HashMap;
 import java.util.Timer;
 import java.util.TimerTask;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -331,13 +329,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void setDelayBeforeConsStartInPipeline() {
-        try {
-            logger.debug("Waiting {}ms ...", pipelineManager.getAmountOfMillisecondsToWait());
-            Thread.sleep(pipelineManager.getAmountOfMillisecondsToWait());
-            logger.debug("Continue ...");
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        }
+
+        logger.debug("Waiting {}ms ...", pipelineManager.getAmountOfMillisecondsToWait());
+        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+        scheduler.schedule(() -> 0, pipelineManager.getAmountOfMillisecondsToWait(), TimeUnit.MILLISECONDS);
+//            Thread.sleep(pipelineManager.getAmountOfMillisecondsToWait());
+        logger.debug("Continue ...");
     }
 
     /**
@@ -458,7 +455,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until the current consensus finishes
             proposeLock.lock();
-            logger.debug("getInExec : {} pipelineManager.getConsensusesInExecutionList().size() : {} , maxConsensusesInExec : {}",getInExec(), pipelineManager.getConsensusesInExecutionList().size(), pipelineManager.maxConsensusesInExec);
+            logger.debug("getInExec : {} pipelineManager.getConsensusesInExecutionList().size() : {} , maxConsensusesInExec : {}", getInExec(), pipelineManager.getConsensusesInExecutionList().size(), pipelineManager.maxConsensusesInExec);
             if (getInExec() != -1 && pipelineManager.getConsensusesInExecutionList().size() == pipelineManager.maxConsensusesInExec) { //there are already max amount of consensus running
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
@@ -482,10 +479,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                    canProposeInPipeline.awaitUninterruptibly();
 //                }
 //            }
-                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-                    logger.debug("Waiting before starting new consensus...");
-                    setDelayBeforeConsStartInPipeline();
-                }
+            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+                logger.debug("Waiting before starting new consensus...");
+                setDelayBeforeConsStartInPipeline();
+            }
             proposeLock.unlock();
 
             if (!doWork) break;
