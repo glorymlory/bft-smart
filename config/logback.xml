@@ -56,5 +56,6 @@
     <logger name="bftsmart.communication.ServerCommunicationSystem" level="TRACE"></logger>
     <logger name="bftsmart.communication.MessageHandler" level="TRACE"></logger>
     <logger name="bftsmart.tom.core.ExecutionManager" level="TRACE"></logger>
+    <logger name="bftsmart.communication.server.ServersCommunicationLayer" level="TRACE"></logger>
     <!--  <logger name="bftsmart.tom.util.ShutdownHookThread" level="DEBUG"></logger>-->
 </configuration>
