@@ -332,9 +332,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         logger.debug("Waiting {}ms ...", pipelineManager.getAmountOfMillisecondsToWait());
         ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        scheduler.schedule(() -> 0, pipelineManager.getAmountOfMillisecondsToWait(), TimeUnit.MILLISECONDS);
+        Runnable runnable = () -> logger.debug("Continue ...");
+        scheduler.schedule(runnable, pipelineManager.getAmountOfMillisecondsToWait(), TimeUnit.MILLISECONDS);
 //            Thread.sleep(pipelineManager.getAmountOfMillisecondsToWait());
-        logger.debug("Continue ...");
+
     }
 
     /**
