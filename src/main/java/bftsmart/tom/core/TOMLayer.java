@@ -706,6 +706,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     private void haveMessages() {
         messagesLock.lock();
+        logger.debug("haveMessages...");
         haveMessages.signal();
         messagesLock.unlock();
     }

@@ -56,8 +56,10 @@ public class MessageHandler {
 
 			ConsensusMessage consMsg = (ConsensusMessage) sm;
 
-			if (consMsg.authenticated || consMsg.getSender() == myId)
+			if (consMsg.authenticated || consMsg.getSender() == myId) {
+				logger.debug("deliver in processData in MessageHandler");
 				acceptor.deliver(consMsg);
+			}
 			else {
 				logger.warn("Discarding unauthenticated message from " + sm.getSender());
 			}
