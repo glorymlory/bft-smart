@@ -331,10 +331,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void setDelayBeforeConsStartInPipeline() {
 
         logger.debug("Waiting {}ms ...", pipelineManager.getAmountOfMillisecondsToWait());
-        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
-        Runnable runnable = () -> logger.debug("Continue ...");
-        scheduler.schedule(runnable, pipelineManager.getAmountOfMillisecondsToWait(), TimeUnit.MILLISECONDS);
-//            Thread.sleep(pipelineManager.getAmountOfMillisecondsToWait());
+//        ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+//        Runnable runnable = () -> logger.debug("Continue ...");
+//        scheduler.schedule(runnable, pipelineManager.getAmountOfMillisecondsToWait(), TimeUnit.MILLISECONDS);
+        try {
+            Thread.sleep(pipelineManager.getAmountOfMillisecondsToWait());
+            logger.debug("Continue ...");
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
