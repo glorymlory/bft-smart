@@ -293,9 +293,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
     public void writeSent(int cid) {
         if (pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1) == cid) {
-            proposeLock.lock();
             canProposeInPipeline.signalAll();
-            proposeLock.unlock();
         }
     }
 
@@ -467,32 +465,32 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
             }
-
-//            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
-//                int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
-//
-//                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
-//                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
-//                } else {
-//                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
-//                }
-//
-//                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
-//                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
-//                    canProposeInPipeline.awaitUninterruptibly();
-//                }
-//                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
-//                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
-//                    canProposeInPipeline.awaitUninterruptibly();
-//                }
-//            }
             proposeLock.unlock();
 
-            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
-            kk++;
-            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-                logger.debug("Waiting before starting new consensus...");
-                setDelayBeforeConsStartInPipeline();
+//            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
+//            kk++;
+//            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+//                logger.debug("Waiting before starting new consensus...");
+//                setDelayBeforeConsStartInPipeline();
+//            }
+
+            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
+                int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
+
+                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
+                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
+                } else {
+                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
+                }
+
+                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
+                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+                    canProposeInPipeline.awaitUninterruptibly();
+                }
+                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
+                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+                    canProposeInPipeline.awaitUninterruptibly();
+                }
             }
 
             if (!doWork) break;
