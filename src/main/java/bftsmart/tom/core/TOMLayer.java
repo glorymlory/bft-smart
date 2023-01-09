@@ -465,14 +465,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
             }
-            proposeLock.unlock();
-
-//            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
-//            kk++;
-//            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-//                logger.debug("Waiting before starting new consensus...");
-//                setDelayBeforeConsStartInPipeline();
-//            }
 
             if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
                 int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
@@ -492,6 +484,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     canProposeInPipeline.awaitUninterruptibly();
                 }
             }
+            proposeLock.unlock();
+
+//            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
+//            kk++;
+//            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+//                logger.debug("Waiting before starting new consensus...");
+//                setDelayBeforeConsStartInPipeline();
+//            }
+
 
             if (!doWork) break;
 
