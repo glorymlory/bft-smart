@@ -488,12 +488,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
             proposeLock.unlock();
 
-//            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
-//            kk++;
-//            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-//                logger.debug("Waiting before starting new consensus...");
-//                setDelayBeforeConsStartInPipeline();
-//            }
+            logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
+            kk++;
+            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+                logger.debug("Waiting before starting new consensus...");
+                setDelayBeforeConsStartInPipeline();
+            }
 
 
             if (!doWork) break;
