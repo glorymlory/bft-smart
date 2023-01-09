@@ -292,9 +292,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void writeSent(int cid) {
+        proposeLock.lock();
         if (pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1) == cid) {
             canProposeInPipeline.signalAll();
         }
+        proposeLock.unlock();
     }
 
     /**
