@@ -201,7 +201,7 @@ public final class Acceptor {
 			// start this consensus if it is not already running
 //			if (cid == tomLayer.getLastExec() + 1) {
 //			TODO && tomLayer.pipelineManager.getConsensusesInExecution().contains(cid)
-			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + 3)) {
+			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + controller.getStaticConf().getMaxConsensusesInExec())){
 				tomLayer.setInExec(cid);
 			}
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
