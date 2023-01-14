@@ -106,7 +106,7 @@ public final class DeliveryThread extends Thread {
 
 		if (!containsReconfig(dec)) {
 
-			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
+//			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
 			// set this decision as the last one from this replica
 //			tomLayer.setLastExec(dec.getConsensusId());
 			// define that end of this execution

@@ -224,8 +224,8 @@ public final class ExecutionManager {
         int inExec = tomLayer.getInExec();
         
         logger.debug("Received message  " + msg);
-        logger.debug("I'm at consensus " + 
-                inExec + " and my last consensus is " + lastConsId);
+//        logger.debug("I'm at consensus " +
+//                inExec + " and my last consensus is " + lastConsId);
         
         boolean isRetrievingState = tomLayer.isRetrievingState();
 

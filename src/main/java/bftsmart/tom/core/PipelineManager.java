@@ -36,18 +36,18 @@ public class PipelineManager {
     }
 
     public void setLastProposedTimestamp() {
-        logger.debug("Last proposed consensus timestamp: {}", timestampOfLastConsensusProposed);
+//        logger.debug("Last proposed consensus timestamp: {}", timestampOfLastConsensusProposed);
         timestampOfLastConsensusProposed = System.nanoTime();
-        logger.debug("Current proposed consensus timestamp: {}", timestampOfLastConsensusProposed);
+//        logger.debug("Current proposed consensus timestamp: {}", timestampOfLastConsensusProposed);
     }
 
     public boolean isDelayedBeforeNewConsensusStart() {
         long currTimestamp = System.nanoTime();
-        logger.debug("Current timestamp for starting new consensus: {} and the previous cons. start time", currTimestamp, timestampOfLastConsensusProposed);
+//        logger.debug("Current timestamp for starting new consensus: {} and the previous cons. start time", currTimestamp, timestampOfLastConsensusProposed);
         if (timestampOfLastConsensusProposed != 0) {
             long differenceInNanoBetweenConsensuses = currTimestamp - timestampOfLastConsensusProposed;
             long differenceInMillisecBetweenConsensuses = TimeUnit.MILLISECONDS.convert(differenceInNanoBetweenConsensuses, TimeUnit.NANOSECONDS);
-            logger.debug("Difference In Millisecond Between Consensuses: {} and original value {}", differenceInMillisecBetweenConsensuses, differenceInNanoBetweenConsensuses);
+//            logger.debug("Difference In Millisecond Between Consensuses: {} and original value {}", differenceInMillisecBetweenConsensuses, differenceInNanoBetweenConsensuses);
             return (differenceInMillisecBetweenConsensuses >= delayBeforeNewConsensusProposeInMillisec) ? true : false;
         } else {
             return true; // no consensuses in exec.
@@ -73,17 +73,17 @@ public class PipelineManager {
     public void addToConsensusInExecList(int cid) {
         if (!this.consensusesInExecution.contains(cid) && isAllowedToAddToConsensusInExecList()) {
             this.consensusesInExecution.add(cid);
-            logger.debug("Adding to consensusesInExecution value " + (cid));
+//            logger.debug("Adding to consensusesInExecution value " + (cid));
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
         } else {
-            logger.debug("Value {} already exist in consensusesInExecution list or the list is full. List size {}: ", cid, this.consensusesInExecution.size());
+//            logger.debug("Value {} already exist in consensusesInExecution list or the list is full. List size {}: ", cid, this.consensusesInExecution.size());
         }
     }
 
     public void removeFromConsensusInExecList(int cid) {
         if (this.consensusesInExecution.size() > minConsensusesInExec && this.consensusesInExecution.contains(cid)) {
             this.consensusesInExecution.remove(this.consensusesInExecution.indexOf(cid));
-            logger.debug("Removing in consensusesInExecution value: {}", cid);
+//            logger.debug("Removing in consensusesInExecution value: {}", cid);
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
         } else {
             logger.warn("Cannot remove value {} in consensusesInExecution list because value not in the list.", cid);
