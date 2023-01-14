@@ -167,7 +167,7 @@ public final class Acceptor {
 		int cid = epoch.getConsensus().getId();
 		int ts = epoch.getConsensus().getEts();
 		int ets = executionManager.getConsensus(msg.getNumber()).getEts();
-		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}", msg.getSender(), cid, me);
+		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}, at timestamp: {}", msg.getSender(), cid, me, System.nanoTime());
 		if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
 				&& epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
 			executePropose(epoch, msg.getValue());
@@ -227,7 +227,7 @@ public final class Acceptor {
 //					logger.debug("write sent time - propose received : {}", epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime - epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime);
 //					logger.debug("write sent time - Consensus start : {}", epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime - epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime);
 
-					logger.debug("Sending WRITE for cId:{}, I am:{}", cid, me);
+					logger.debug("Sending WRITE for cId:{}, I am:{}, at timestamp: {}", cid, me, System.nanoTime());
 					communication.send(this.controller.getCurrentViewOtherAcceptors(),
 							factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash));
 
@@ -293,7 +293,7 @@ public final class Acceptor {
 	private void computeWrite(int cid, Epoch epoch, byte[] value) {
 		int writeAccepted = epoch.countWrite(value);
 
-		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{},", writeAccepted, cid, epoch.getTimestamp());
+		logger.debug("I have {}, WRITE's for cId:{}, Epoch timestamp:{}, at timestamp: {}", writeAccepted, cid, epoch.getTimestamp(), System.nanoTime());
 
 		if (writeAccepted > controller.getQuorum() 
 				&& Arrays.equals(value, epoch.propValueHash)) {
@@ -407,11 +407,11 @@ public final class Acceptor {
 	 * @param value Value sent in the message
 	 */
 	private void computeAccept(int cid, Epoch epoch, byte[] value) {
-		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
-				epoch.getTimestamp());
+		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} , at timestamp : {}", epoch.countAccept(value), cid,
+				epoch.getTimestamp(), System.nanoTime());
 
 		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
-			logger.debug("Deciding consensus " + cid);
+			logger.debug("Deciding consensus " + cid + " at timestamp : " + System.nanoTime());
 			decide(epoch);
 		}
 	}

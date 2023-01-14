@@ -223,7 +223,7 @@ public final class ExecutionManager {
         
         int inExec = tomLayer.getInExec();
         
-        logger.debug("Received message  " + msg);
+        logger.debug("Received message  " + msg + "timestamp : " + System.nanoTime());
 //        logger.debug("I'm at consensus " +
 //                inExec + " and my last consensus is " + lastConsId);
         
