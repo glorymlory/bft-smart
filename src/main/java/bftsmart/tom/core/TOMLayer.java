@@ -106,7 +106,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     private final Condition haveMessages = messagesLock.newCondition();
     private final ReentrantLock proposeLock = new ReentrantLock();
     private final Condition canPropose = proposeLock.newCondition();
-    private final Condition canProposeInPipeline = proposeLock.newCondition();
+    private final ReentrantLock proposePipelineLock = new ReentrantLock();
+    private final Condition canProposeInPipeline = proposePipelineLock.newCondition();
 
     private final ReentrantReadWriteLock rwLock = new ReentrantReadWriteLock();
     private final Lock readPipelineCIDLock = rwLock.readLock();
@@ -292,11 +293,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     }
 
     public void writeSent(int cid) {
-        proposeLock.lock();
+        proposePipelineLock.lock();
         if (pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1) == cid) {
             canProposeInPipeline.signalAll();
         }
-        proposeLock.unlock();
+        proposePipelineLock.unlock();
     }
 
     /**
@@ -467,7 +468,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 logger.debug("Waiting for consensus " + getInExec() + " termination.");
                 canPropose.awaitUninterruptibly();
             }
+            proposeLock.unlock();
 
+            proposePipelineLock.lock();
             if (getInExec() != -1 && !pipelineManager.getConsensusesInExecutionList().isEmpty()) {
                 int lastInPipelineExec = pipelineManager.getConsensusesInExecutionList().get(pipelineManager.getConsensusesInExecutionList().size() - 1);
 
@@ -486,7 +489,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     canProposeInPipeline.awaitUninterruptibly();
                 }
             }
-            proposeLock.unlock();
+            proposePipelineLock.unlock();
 
             logger.debug("THREAD  id : {} loopId: {}", Thread.currentThread().getId(), kk);
             kk++;
@@ -525,7 +528,16 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                int execId = getLastExec() + 1;
                 readPipelineCIDLock.lock();
                 logger.debug("getLastExec() : {} pipelineManager.getConsensusesInExecutionList().size() : {}", getLastExec(), pipelineManager.getConsensusesInExecutionList().size());
-                int execId = getLastExec() + (pipelineManager.getConsensusesInExecutionList().isEmpty() ? 1 : (pipelineManager.getConsensusesInExecutionList().size() + 1));
+                // find the biggest elemen in the list and add 1
+                int maxValue = -1;
+                for (Integer val : pipelineManager.getConsensusesInExecutionList()) {
+                    maxValue = Math.max(maxValue, val);
+                }
+                logger.debug("maxValue : {}", maxValue);
+                maxValue = Math.max(maxValue, getLastExec());
+                logger.debug("maxValue NEW : {}", maxValue);
+//                int execId = getLastExec() + (pipelineManager.getConsensusesInExecutionList().isEmpty() ? 1 : (pipelineManager.getConsensusesInExecutionList().size() + 1));
+                int execId = maxValue + 1;
                 readPipelineCIDLock.unlock();
                 setInExec(execId);
 

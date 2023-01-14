@@ -402,24 +402,8 @@ public final class Acceptor {
 	}
 
 	/**
-	 * Called when a ACCEPT message is received
-	 * 
-	 * @param epoch Epoch of the receives message
-	 * @param a     Replica that sent the message
-	 * @param value Value sent in the message
-	 */
-	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
-		int cid = epoch.getConsensus().getId();
-		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
-		epoch.setAccept(msg.getSender(), msg.getValue());
-		epoch.addToProof(msg);
-
-		computeAccept(cid, epoch, msg.getValue());
-	}
-
-	/**
 	 * Computes ACCEPT values according to the Byzantine consensus specification
-	 * 
+	 *
 	 * @param epoch Epoch of the receives message
 	 * @param value Value sent in the message
 	 */
@@ -431,6 +415,22 @@ public final class Acceptor {
 			logger.debug("Deciding consensus " + cid);
 			decide(epoch);
 		}
+	}
+
+	/**
+	 * Called when a ACCEPT message is received
+	 *
+	 * @param epoch Epoch of the receives message
+	 * @param a     Replica that sent the message
+	 * @param value Value sent in the message
+	 */
+	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
+		int cid = epoch.getConsensus().getId();
+		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
+		epoch.setAccept(msg.getSender(), msg.getValue());
+		epoch.addToProof(msg);
+
+		computeAccept(cid, epoch, msg.getValue());
 	}
 
 	/**

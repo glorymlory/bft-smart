@@ -238,7 +238,7 @@ public final class ExecutionManager {
         /** THIS IS JOAO'S CODE, TO HANDLE THE STATE TRANSFER */
         // This serves to re-direct the messages to the out of context
         // while a replica is receiving the state of the others and updating itself
-        if (isRetrievingState || // Is this replica retrieving a state?
+        if ((isRetrievingState || pipelineManager.getConsensusesInExecutionList().size()>0) || // Is this replica retrieving a state?
                 (!(lastConsId == -1 && msg.getNumber() >= (lastConsId + revivalHighMark)) && //not a recovered replica
                 (msg.getNumber() > lastConsId && (msg.getNumber() < (lastConsId + paxosHighMark))) && // not an ahead of time message
                 !(stopped && msg.getNumber() >= (lastConsId + timeoutHighMark)))) { // not a timed-out replica which needs to fetch the state
@@ -253,10 +253,15 @@ public final class ExecutionManager {
                 }
                 stoppedMsgsLock.unlock();
             } else {
-                if (isRetrievingState || 
-                        msg.getNumber() > (lastConsId + 1) || 
-                        (inExec != -1 && inExec < msg.getNumber()) || 
-                        (inExec == -1 && msg.getType() != MessageFactory.PROPOSE)) { //not propose message for the next consensus
+//                if (isRetrievingState ||
+//                        msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec()) ||
+//                        (inExec != -1 && !tomLayer.getAllExecutingInstances().contains(msg.getNumber())) ||
+//                        (inExec == -1 && msg.getType() != MessageFactory.PROPOSE))
+                if ((!pipelineManager.isLessThanMaxConsInExecListAllowed() && !pipelineManager.getConsensusesInExecutionList().contains(msg.getNumber())) ||
+                        msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec()) ||
+                        (pipelineManager.getConsensusesInExecutionList().size()>0 && msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec())) ||
+                        (pipelineManager.getConsensusesInExecutionList().isEmpty() && msg.getType() != MessageFactory.PROPOSE))
+                { //not propose message for the next consensus
                     logger.debug("Message for consensus " + 
                             msg.getNumber() + " is out of context, adding it to out of context set");
                     
