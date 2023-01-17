@@ -200,7 +200,7 @@ public final class Acceptor {
 			// start this consensus if it is not already running
 //			if (cid == tomLayer.getLastExec() + 1) {
 //			TODO && tomLayer.pipelineManager.getConsensusesInExecution().contains(cid)
-			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + controller.getStaticConf().getMaxConsensusesInExec())){
+			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + controller.getStaticConf().getMaxConsensusesInExec())) {
 				tomLayer.setInExec(cid);
 			}
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
@@ -378,7 +378,7 @@ public final class Acceptor {
 	 * contains a cryptographic proof.
 	 * 
 	 * @param cm    The consensus message to which the proof shall be set
-	 * @param epoch The epoch during in which the consensus message was created
+	 * @param msgs The epoch during in which the consensus message was created
 	 */
 	private void insertProof(ConsensusMessage cm, TOMMessage[] msgs) {
 		ByteArrayOutputStream bOut = new ByteArrayOutputStream(248);
@@ -401,22 +401,6 @@ public final class Acceptor {
 	}
 
 	/**
-	 * Computes ACCEPT values according to the Byzantine consensus specification
-	 *
-	 * @param epoch Epoch of the receives message
-	 * @param value Value sent in the message
-	 */
-	private void computeAccept(int cid, Epoch epoch, byte[] value) {
-		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} , at timestamp : {}", epoch.countAccept(value), cid,
-				epoch.getTimestamp(), System.nanoTime());
-
-		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
-			logger.debug("Deciding consensus " + cid + " at timestamp : " + System.nanoTime());
-			decide(epoch);
-		}
-	}
-
-	/**
 	 * Called when a ACCEPT message is received
 	 *
 	 * @param epoch Epoch of the receives message
@@ -430,6 +414,22 @@ public final class Acceptor {
 		epoch.addToProof(msg);
 
 		computeAccept(cid, epoch, msg.getValue());
+	}
+
+	/**
+	 * Computes ACCEPT values according to the Byzantine consensus specification
+	 * 
+	 * @param epoch Epoch of the receives message
+	 * @param value Value sent in the message
+	 */
+	private void computeAccept(int cid, Epoch epoch, byte[] value) {
+		logger.debug("I have {} ACCEPTs for cId:{}, Timestamp:{} ", epoch.countAccept(value), cid,
+				epoch.getTimestamp());
+
+		if (epoch.countAccept(value) > controller.getQuorum() && !epoch.getConsensus().isDecided()) {
+			logger.debug("Deciding consensus " + cid);
+			decide(epoch);
+		}
 	}
 
 	/**
