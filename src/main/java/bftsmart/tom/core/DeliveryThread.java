@@ -74,7 +74,18 @@ public final class DeliveryThread extends Thread {
 						  ServerViewController controller) {
 		super("Delivery Thread");
 		this.decided = new LinkedBlockingQueue<>();
-		this.outOfSequenceValuesForDelivery = new PriorityBlockingQueue<>();
+//		TODO ist it ok to init it with 1k max size?
+		// comparator in acsending order
+
+		this.outOfSequenceValuesForDelivery = new PriorityBlockingQueue<>(1000,(o1, o2) -> {
+			if (o1.getConsensusId() == o2.getConsensusId()) {
+				return 0;
+			} else if (o1.getConsensusId() > o2.getConsensusId()) {
+				return 1;
+			} else {
+				return -1;
+			}
+		});
 
 		this.tomLayer = tomLayer;
 		this.receiver = receiver;
