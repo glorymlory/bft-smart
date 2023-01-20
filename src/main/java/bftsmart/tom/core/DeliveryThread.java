@@ -29,7 +29,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Condition;
@@ -108,6 +107,7 @@ public final class DeliveryThread extends Thread {
 
 //		Not sequential pipelining case. Adding to out of sequence values for delivery
 		if(dec.getConsensusId() > tomLayer.getLastExec()+1){
+			logger.info("Could not insert decision into decided queue, because value {} is out of sequence. Adding to out of sequence values for delivery", dec.getConsensusId());
 			outOfSequenceValuesForDelivery.add(dec);
 		} else {
 			try {
@@ -133,7 +133,7 @@ public final class DeliveryThread extends Thread {
 				// define that end of this execution
 //			tomLayer.setInExec(-1);
 				tomLayer.setLastExecAndRemoveInExec(dec.getConsensusId());
-				processOutOfContextSequentialPipeliningDecision();
+				processOutOfSequencePipelineDecision();
 //				TODO what do we do if there is still value in outOfSequenceValuesForDelivery and failure happened?
 			} // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
 			// System.exit(0);
@@ -144,10 +144,10 @@ public final class DeliveryThread extends Thread {
 		}
 	}
 
-	private void processOutOfContextSequentialPipeliningDecision() {
-		while(!outOfSequenceValuesForDelivery.isEmpty()){
-			logger.debug("Processing out of context sequential pipelining decision");
+	private void processOutOfSequencePipelineDecision() {
+		for(Decision dec : outOfSequenceValuesForDelivery){
 			Decision decision = outOfSequenceValuesForDelivery.peek();
+			logger.debug("Processing out of sequence value  {}", decision.getConsensusId());
 			if(decision.getConsensusId() == tomLayer.getLastExec()+1){
 				outOfSequenceValuesForDelivery.poll();
 				delivery(decision);
