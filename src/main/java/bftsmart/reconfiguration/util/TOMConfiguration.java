@@ -63,7 +63,6 @@ public class TOMConfiguration extends Configuration {
     private boolean fairbatch;
     private String bindAddress;
     private int clientInvokeOrderedTimeout;
-    private int minConsensusesInExec;
     private int maxConsensusesInExec;
     private int delayBeforeNewConsensusProposeInMillisec;
 
@@ -613,8 +612,6 @@ public class TOMConfiguration extends Configuration {
     }
 
     public int getMaxConsensusesInExec(){return maxConsensusesInExec;}
-
-    public int getMinConsensusesInExec(){return minConsensusesInExec;}
 
     public int getDelayBeforeNewConsensusProposeInMillisec(){return delayBeforeNewConsensusProposeInMillisec;}
 
