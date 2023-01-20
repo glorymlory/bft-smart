@@ -146,6 +146,7 @@ public final class DeliveryThread extends Thread {
 
 	private void processOutOfContextSequentialPipeliningDecision() {
 		while(!outOfSequenceValuesForDelivery.isEmpty()){
+			logger.debug("Processing out of context sequential pipelining decision");
 			Decision decision = outOfSequenceValuesForDelivery.peek();
 			if(decision.getConsensusId() == tomLayer.getLastExec()+1){
 				outOfSequenceValuesForDelivery.poll();
