@@ -412,13 +412,6 @@ public class TOMConfiguration extends Configuration {
                 clientInvokeOrderedTimeout = Integer.parseInt(s);
             }
 
-            s = (String) configs.remove("system.pipeline.minConsensusesInExec");
-            if (s == null) {
-                minConsensusesInExec = 0;
-            } else {
-                minConsensusesInExec = Integer.parseInt(s);
-            }
-
             s = (String) configs.remove("system.pipeline.maxConsensusesInExec");
             if (s == null) {
                 maxConsensusesInExec = 3;
