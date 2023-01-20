@@ -30,11 +30,7 @@ public class PipelineManager {
         return this.consensusesInExecution;
     }
 
-    public boolean isLessThanMaxConsInExecListAllowed() {
-        return this.isAllowedToAddToConsensusInExecList();
-    }
-
-    private boolean isAllowedToAddToConsensusInExecList() {
+    public boolean isAllowedToAddToConsensusInExecList() {
         return this.consensusesInExecution.size() < maxConsensusesInExec;
     }
 

@@ -257,7 +257,7 @@ public final class ExecutionManager {
 //                        msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec()) ||
 //                        (inExec != -1 && !tomLayer.getAllExecutingInstances().contains(msg.getNumber())) ||
 //                        (inExec == -1 && msg.getType() != MessageFactory.PROPOSE))
-                if ((!pipelineManager.isLessThanMaxConsInExecListAllowed() && !pipelineManager.getConsensusesInExecution().contains(msg.getNumber())) ||
+                if ((!pipelineManager.isAllowedToAddToConsensusInExecList() && !pipelineManager.getConsensusesInExecution().contains(msg.getNumber())) ||
                         msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec()) ||
                         (pipelineManager.getConsensusesInExecution().size()>0 && msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec())) ||
                         (pipelineManager.getConsensusesInExecution().isEmpty() && msg.getType() != MessageFactory.PROPOSE))

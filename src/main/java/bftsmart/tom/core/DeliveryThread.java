@@ -29,7 +29,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -56,6 +58,10 @@ public final class DeliveryThread extends Thread {
 	//Variables used to pause/resume decisions delivery
 	private final Lock pausingDeliveryLock = new ReentrantLock();
 	private final Condition deliveryPausedCondition = pausingDeliveryLock.newCondition();
+	private PriorityBlockingQueue<Decision> outOfSequenceValuesForDelivery;
+
+//
+	private final Lock pausingDeliveryForSequentialPipeliningLock = new ReentrantLock();
 	private int isPauseDelivery;
 
 	/**
@@ -68,6 +74,7 @@ public final class DeliveryThread extends Thread {
 						  ServerViewController controller) {
 		super("Delivery Thread");
 		this.decided = new LinkedBlockingQueue<>();
+		this.outOfSequenceValuesForDelivery = new PriorityBlockingQueue<>();
 
 		this.tomLayer = tomLayer;
 		this.receiver = receiver;
@@ -88,35 +95,53 @@ public final class DeliveryThread extends Thread {
 	 */
 	public void delivery(Decision dec) {
 
-		try {
-			decidedLock.lock();
-			decided.put(dec);
+//		Not sequential pipelining case. Adding to out of sequence values for delivery
+		if(dec.getConsensusId() > tomLayer.getLastExec()+1){
+			outOfSequenceValuesForDelivery.add(dec);
+		} else {
+			try {
+				decidedLock.lock();
+				decided.put(dec);
 
-			// clean the ordered messages from the pending buffer
-			TOMMessage[] requests = extractMessagesFromDecision(dec);
-			tomLayer.clientsManager.requestsOrdered(requests);
+				// clean the ordered messages from the pending buffer
+				TOMMessage[] requests = extractMessagesFromDecision(dec);
+				tomLayer.clientsManager.requestsOrdered(requests);
+				notEmptyQueue.signalAll();
+				decidedLock.unlock();
+				logger.debug("Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
+				logger.info("====Consensus {} finished=====", dec.getConsensusId());
+			} catch (Exception e) {
+				logger.error("Could not insert decision into decided queue", e);
+			}
 
-			notEmptyQueue.signalAll();
-			decidedLock.unlock();
-			logger.debug("Consensus " + dec.getConsensusId() + " finished. Decided size=" + decided.size());
-			logger.info("====Consensus {} finished=====", dec.getConsensusId());
-		} catch (Exception e) {
-			logger.error("Could not insert decision into decided queue", e);
-		}
-
-		if (!containsReconfig(dec)) {
+			if (!containsReconfig(dec)) {
 
 //			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
-			// set this decision as the last one from this replica
+				// set this decision as the last one from this replica
 //			tomLayer.setLastExec(dec.getConsensusId());
-			// define that end of this execution
+				// define that end of this execution
 //			tomLayer.setInExec(-1);
-			tomLayer.setLastExecAndRemoveInExec(dec.getConsensusId());
-		} // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
-		// System.exit(0);
-		else {
-			logger.debug("Decision from consensus " + dec.getConsensusId() + " has reconfiguration");
-			lastReconfig = dec.getConsensusId();
+				tomLayer.setLastExecAndRemoveInExec(dec.getConsensusId());
+				processOutOfContextSequentialPipeliningDecision();
+//				TODO what do we do if there is still value in outOfSequenceValuesForDelivery and failure happened?
+			} // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
+			// System.exit(0);
+			else {
+				logger.debug("Decision from consensus " + dec.getConsensusId() + " has reconfiguration");
+				lastReconfig = dec.getConsensusId();
+			}
+		}
+	}
+
+	private void processOutOfContextSequentialPipeliningDecision() {
+		while(!outOfSequenceValuesForDelivery.isEmpty()){
+			Decision decision = outOfSequenceValuesForDelivery.peek();
+			if(decision.getConsensusId() == tomLayer.getLastExec()+1){
+				outOfSequenceValuesForDelivery.poll();
+				delivery(decision);
+			} else {
+				break;
+			}
 		}
 	}
 

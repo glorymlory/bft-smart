@@ -311,7 +311,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         this.inExecution = inEx;
 //        TODO check if we need here IsRetrievingState -> might lead us to a wrong waiting time after we had max elements in a list
-        if (pipelineManager.isLessThanMaxConsInExecListAllowed() && !isRetrievingState()) {
+        if (pipelineManager.isAllowedToAddToConsensusInExecList() && !isRetrievingState()) {
             canPropose.signalAll();
         }
         proposeLock.unlock();
@@ -322,7 +322,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         logger.debug("Removing inExec value : " + this.inExecution + " to " + -1);
         if (inExToRemove != -1) this.pipelineManager.removeFromConsensusInExecList(inExToRemove);
         this.inExecution = -1;
-        if (pipelineManager.isLessThanMaxConsInExecListAllowed() && !isRetrievingState()) {
+        if (pipelineManager.isAllowedToAddToConsensusInExecList() && !isRetrievingState()) {
             canPropose.signalAll();
         }
         proposeLock.unlock();
@@ -512,7 +512,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
-                    pipelineManager.isLessThanMaxConsInExecListAllowed()) { //there is no consensus in execution
+                    pipelineManager.isAllowedToAddToConsensusInExecList()) { //there is no consensus in execution
 
                 // Sets the current consensus
 //                int execId = getLastExec() + 1;

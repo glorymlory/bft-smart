@@ -37,16 +37,6 @@
 
     <!-- SPECIFIC CLASS LOGS -->
     <!--
-1532097
-2792089
-2747452
-
-1641586
-Average time for 50 executions (-10%) = 22106.26625 us
-0 // Standard desviation for 50 executions (-10%) = 7560.967798737571 us
-0 // Average time for 50 executions (all samples) = 24548.01628 us
-0 // Standard desviation for 50 executions (all samples) = 14247.265584539986 us
-0 // Maximum time for 50 executions (all samples) = 76762 us
 
     <logger name="bftsmart.consensus.roles.AcceptorSSLTLS" level="TRACE"></logger>
     <logger name="bftsmart.communication.server.ServersCommunicationLayerSSLTLS" level="DEBUG"></logger>
@@ -54,19 +44,13 @@ Average time for 50 executions (-10%) = 22106.26625 us
      <logger name="bftsmart.reconfiguration.util.ECDSAKeyLoader" level="TRACE"></logger>
       -->
 
+    <logger name="bftsmart.tom.server.defaultservices.DefaultApplicationState" level="TRACE"></logger>
+    <logger name="bftsmart.tom.leaderchange.*" level="TRACE"></logger>
+    <logger name="bftsmart.statemanagement.StateManager" level="TRACE"></logger>
+    <logger name="bftsmart.tom.core.DeliveryThread" level="TRACE"></logger>
+    <logger name="bftsmart.tom.core.Synchronizer" level="TRACE"></logger>
+    <logger name="bftsmart.tom.core.DeliveryThread" level="TRACE"></logger>
     <logger name="bftsmart.tom.core.TOMLayer" level="TRACE"></logger>
     <logger name="bftsmart.tom.core.PipelineManager" level="TRACE"></logger>
     <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
-    <logger name="bftsmart.consensus.roles.Proposer" level="TRACE"></logger>
-    <logger name="bftsmart.reconfiguration.util.RSAKeyLoader" level="TRACE"></logger>
-<!--    <logger name="bftsmart.tom.core.Synchronizer" level="TRACE"></logger>-->
-<!--    <logger name="bftsmart.tom.core.DeliveryThread" level="TRACE"></logger>-->
-    <logger name="bftsmart.statemanagement.StateManager" level="TRACE"></logger>
-<!--    <logger name="bftsmart.clientsmanagement.ClientsManager" level="TRACE"></logger>-->
-<!--    <logger name="bftsmart.tom.ServiceReplica" level="TRACE"></logger>-->
-<!--    <logger name="bftsmart.communication.ServerCommunicationSystem" level="TRACE"></logger>-->
-<!--    <logger name="bftsmart.communication.MessageHandler" level="TRACE"></logger>-->
-    <logger name="bftsmart.tom.core.ExecutionManager" level="TRACE"></logger>
-<!--    <logger name="bftsmart.communication.server.ServersCommunicationLayer" level="TRACE"></logger>-->
-    <!--  <logger name="bftsmart.tom.util.ShutdownHookThread" level="DEBUG"></logger>-->
 </configuration>
