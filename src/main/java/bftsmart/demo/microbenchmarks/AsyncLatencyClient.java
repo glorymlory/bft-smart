@@ -192,6 +192,7 @@ public class AsyncLatencyClient {
                 for (int i = 0; i < this.numberOfOps; i++) {
                     
                     long last_send_instant = System.nanoTime();
+                    System.out.println("last_send_instant " + last_send_instant);
                     this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
 
                         private int replies = 0;
@@ -206,6 +207,7 @@ public class AsyncLatencyClient {
                         @Override
                         public void replyReceived(RequestContext context, TOMMessage reply) {
                             StringBuilder builder = new StringBuilder();
+                            System.out.println("current Receivced timestamp " + System.nanoTime());
                             builder.append("[RequestContext] id: " + context.getReqId() + " type: " + context.getRequestType());
                             builder.append("[TOMMessage reply] sender id: " + reply.getSender() + " Hash content: " + Arrays.toString(reply.getContent()));
                             if (verbose) System.out.println(builder.toString());
@@ -221,7 +223,7 @@ public class AsyncLatencyClient {
                         }
                     }, this.reqType);
                     if (i > (this.numberOfOps / 2)) {
-                        System.out.println("Throughput: " + st.getCount());
+                        System.out.println("Throughput: " + st.getCount() + " System.nanoTime() - last_send_instant: "+ (System.nanoTime() - last_send_instant));
                         st.store(System.nanoTime() - last_send_instant);
                     }
 
