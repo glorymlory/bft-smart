@@ -220,7 +220,10 @@ public class AsyncLatencyClient {
                             }
                         }
                     }, this.reqType);
-                    if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
+                    if (i > (this.numberOfOps / 2)) {
+                        System.out.println("Throughput: " + st.getCount());
+                        st.store(System.nanoTime() - last_send_instant);
+                    }
 
                     if (this.interval > 0 || this.rampup > 0) {
                         Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
@@ -230,7 +233,7 @@ public class AsyncLatencyClient {
                     if (this.verbose) System.out.println("Sending " + (i + 1) + "th op");
                 }
 
-                Thread.sleep(100);//wait 100ms to receive the last replies
+                Thread.sleep(200);//wait 100ms to receive the last replies
                 
                 if(this.id == initId) {
                    System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = " + st.getAverage(true) / 1000 + " us ");
