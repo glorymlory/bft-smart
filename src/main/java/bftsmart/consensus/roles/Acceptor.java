@@ -200,7 +200,7 @@ public final class Acceptor {
 			// start this consensus if it is not already running
 //			if (cid == tomLayer.getLastExec() + 1) {
 //			TODO && tomLayer.pipelineManager.getConsensusesInExecution().contains(cid)
-			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + controller.getStaticConf().getMaxConsensusesInExec())) {
+			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + executionManager.getPipelineManager().getMaxConsensusesInExec())) {
 				tomLayer.setInExec(cid);
 			}
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
@@ -230,13 +230,12 @@ public final class Acceptor {
 					logger.debug("Sending WRITE for cId:{}, I am:{}, at timestamp: {}", cid, me, System.nanoTime());
 					communication.send(this.controller.getCurrentViewOtherAcceptors(),
 							factory.createWrite(cid, epoch.getTimestamp(), epoch.propValueHash));
-
 					epoch.writeSent();
 
 					computeWrite(cid, epoch, epoch.propValueHash);
 
 					logger.debug("WRITE computed for cId:{}, I am:{}", cid, me);
-					tomLayer.writeSent(cid); // custom
+//					tomLayer.writeSent(cid); // custom
 
 				} else {
 					epoch.setAccept(me, epoch.propValueHash);

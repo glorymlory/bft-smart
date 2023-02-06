@@ -136,7 +136,10 @@ public final class ExecutionManager {
      */
     public void setTOMLayer(TOMLayer tom) {
         this.tomLayer = tom;
+    }
 
+    public PipelineManager getPipelineManager() {
+        return pipelineManager;
     }
 
     /**
@@ -258,8 +261,8 @@ public final class ExecutionManager {
 //                        (inExec != -1 && !tomLayer.getAllExecutingInstances().contains(msg.getNumber())) ||
 //                        (inExec == -1 && msg.getType() != MessageFactory.PROPOSE))
                 if ((!pipelineManager.isAllowedToAddToConsensusInExecList() && !pipelineManager.getConsensusesInExecution().contains(msg.getNumber())) ||
-                        msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec()) ||
-                        (pipelineManager.getConsensusesInExecution().size()>0 && msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec())) ||
+                        msg.getNumber() > (lastConsId + pipelineManager.getMaxConsensusesInExec()) ||
+                        (pipelineManager.getConsensusesInExecution().size()>0 && msg.getNumber() > (lastConsId + pipelineManager.getMaxConsensusesInExec())) ||
                         (pipelineManager.getConsensusesInExecution().isEmpty() && msg.getType() != MessageFactory.PROPOSE))
                 { //not propose message for the next consensus
                     logger.debug("Message for consensus " + 

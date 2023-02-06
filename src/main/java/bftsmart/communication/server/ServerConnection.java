@@ -132,6 +132,7 @@ public class ServerConnection {
         this.useSenderThread = this.controller.getStaticConf().isUseSenderThread();
 
         if (useSenderThread && (this.controller.getStaticConf().getTTPId() != remoteId)) {
+			logger.info("Starting sender thread for server " + remoteId);
             new SenderThread().start();
         } else {
             sendLock = new ReentrantLock();

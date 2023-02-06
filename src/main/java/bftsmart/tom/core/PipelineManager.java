@@ -2,28 +2,35 @@ package bftsmart.tom.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class PipelineManager {
-    public final int maxConsensusesInExec;
-    private final int waitForNextConsensusTime;
+    private int maxConsensusesInExec;
+    private int waitForNextConsensusTime;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private List<Integer> consensusesInExecution = new ArrayList<>();
     private Long timestamp_LastConsensusStarted = 0L;
+    private long batchDisseminationTimeInMilliseconds = 0L;
 
-    public PipelineManager(int  maxConsensusesInExec , int waitForNextConsensusTime) {
+    public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime) {
         this.maxConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
     }
 
     public long getAmountOfMillisecondsToWait() {
-        return Math.max(waitForNextConsensusTime - (TimeUnit.MILLISECONDS.convert((System.nanoTime() - timestamp_LastConsensusStarted),TimeUnit.NANOSECONDS)), 0);
+        return Math.max(waitForNextConsensusTime - (TimeUnit.MILLISECONDS.convert((System.nanoTime() - timestamp_LastConsensusStarted), TimeUnit.NANOSECONDS)), 0);
+    }
+
+    public int getMaxConsensusesInExec() {
+        logger.debug("Max consensuses in execution: {} ", maxConsensusesInExec);
+        return maxConsensusesInExec;
     }
 
     public boolean isDelayedBeforeNewConsensusStart() {
-       return consensusesInExecution.size() == 0 || getAmountOfMillisecondsToWait() <= 0;
+        return consensusesInExecution.size() == 0 || getAmountOfMillisecondsToWait() <= 0;
     }
 
     public List<Integer> getConsensusesInExecution() {
@@ -47,7 +54,7 @@ public class PipelineManager {
 
     public void removeFromConsensusInExecList(int cid) {
         if (!this.consensusesInExecution.isEmpty() && this.consensusesInExecution.contains(cid)) {
-            this.consensusesInExecution.remove((Integer)cid);
+            this.consensusesInExecution.remove((Integer) cid);
             logger.debug("Removing in consensusesInExecution value: {}", cid);
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
         } else {
@@ -57,5 +64,45 @@ public class PipelineManager {
 
     public void cleanUpConsensusesInExec() {
         this.consensusesInExecution = new ArrayList<>();
+    }
+
+    public void updatePipelineConfiguration(long consensusLatencyInNanoSeconds) {
+        if (batchDisseminationTimeInMilliseconds <= 0L) {
+            logger.debug("Batch dissemination time is not set or extremely small. Skipping pipeline configuration update.");
+            return;
+        }
+
+        long consensusLatencyInMilliseconds = TimeUnit.MILLISECONDS.convert(consensusLatencyInNanoSeconds, TimeUnit.NANOSECONDS);
+        if (consensusLatencyInMilliseconds <= 0L) {
+            logger.debug("Consensus latency is not set or extremely small. Skipping pipeline configuration update.");
+            return;
+        }
+
+        int newMaxConsInExec = (int) Math.round((double) consensusLatencyInMilliseconds / (double) (batchDisseminationTimeInMilliseconds*2));
+//        why by 2, because before starting a new consensus we have to finish propose dissemination and then "write sent" stage, because during "write sent"
+//        we actually waiting for a reply and during propose we dont.
+        if (newMaxConsInExec != maxConsensusesInExec && newMaxConsInExec > 0) {
+            maxConsensusesInExec = newMaxConsInExec;
+            logger.debug("New maxConsensusesInExec: {}", newMaxConsInExec);
+            int newWaitForNextConsensusTime = (int) Math.round((double) consensusLatencyInMilliseconds / (double) maxConsensusesInExec);
+            waitForNextConsensusTime = newWaitForNextConsensusTime;
+            logger.debug("New waitForNextConsensusTime: {}ms", newWaitForNextConsensusTime);
+        } else if(newMaxConsInExec <= 0) {
+            maxConsensusesInExec = 1; // we set it to 1 due to leader not being able to execute more than one consensus at a time
+            logger.debug("New maxConsensusesInExec: {}. Setting as default due to the leader load problems.", maxConsensusesInExec);
+            return;
+        }
+
+        logger.debug("Updating pipeline configuration");
+        logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
+        logger.debug("Current maxConsensusesInExec: {}", maxConsensusesInExec);
+        logger.debug("Current waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
+        logger.debug("Current batchDisseminationTime: {}ms", batchDisseminationTimeInMilliseconds);
+        logger.debug("Current consensusLatency: {}ms", consensusLatencyInMilliseconds);
+    }
+
+
+    public void setBatchDisseminationTimeInMilliseconds(long batchDisseminationTimeInNanoSeconds) {
+        this.batchDisseminationTimeInMilliseconds = TimeUnit.MILLISECONDS.convert(batchDisseminationTimeInNanoSeconds, TimeUnit.NANOSECONDS);
     }
 }

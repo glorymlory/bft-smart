@@ -171,4 +171,8 @@ public class ServerCommunicationSystem extends Thread {
     public SecretKey getSecretKey(int id) {
 		return serversConn.getSecretKey(id);
 	}
+
+    public long getBatchDisseminationTime() {
+        return serversConn.getBatchDisseminationTime();
+    }
 }

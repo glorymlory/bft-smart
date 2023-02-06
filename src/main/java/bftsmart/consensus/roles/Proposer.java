@@ -16,6 +16,7 @@ limitations under the License.
 package bftsmart.consensus.roles;
 
 import bftsmart.communication.ServerCommunicationSystem;
+import bftsmart.consensus.Decision;
 import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 
@@ -27,7 +28,7 @@ public class Proposer {
     private MessageFactory factory; // Factory for PaW messages
     private ServerCommunicationSystem communication; // Replicas comunication system
     private ServerViewController controller;
-
+    private long batchDisseminationTime = 0L;
     /**
      * Creates a new instance of Proposer
      * 
@@ -50,10 +51,18 @@ public class Proposer {
      * @param cid ID for the consensus instance to be started
      * @param value Value to be proposed
      */
-    public void startConsensus(int cid, byte[] value) {
+    public void startConsensus(int cid, byte[] value, Decision decision) {
         //******* EDUARDO BEGIN **************//
+        long startTime = System.nanoTime();
         communication.send(this.controller.getCurrentViewAcceptors(),
                 factory.createPropose(cid, 0, value));
+        long endTime = System.nanoTime();
+        batchDisseminationTime = (endTime - startTime);
+        System.out.println("Proposer: startConsensus: cid: " + cid + " value: " + value + " duration: " + (endTime - startTime));
         //******* EDUARDO END **************//
+    }
+
+    public long getBatchDisseminationTime() {
+        return batchDisseminationTime;
     }
 }

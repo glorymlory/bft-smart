@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.communication.server;
 
+import java.awt.*;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.FileInputStream;
@@ -35,6 +36,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 import bftsmart.communication.SystemMessage;
+import bftsmart.consensus.messages.ConsensusMessage;
+import bftsmart.consensus.messages.MessageFactory;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.util.TOMUtil;
@@ -110,6 +113,7 @@ public class ServersCommunicationLayer extends Thread {
 	private SecretKey selfPwd;
 	private SSLServerSocket serverSocketSSLTLS;
 	private String ssltlsProtocolVersion;
+    private long batchDisseminationTime = 0;
 
     public ServersCommunicationLayer(ServerViewController controller,
             LinkedBlockingQueue<SystemMessage> inQueue, 
@@ -276,7 +280,10 @@ public class ServersCommunicationLayer extends Thread {
         // delayed in relation to the others.
         /*Tulio A. Ribeiro*/
         Integer[] targetsShuffled = Arrays.stream( targets ).boxed().toArray( Integer[]::new );
-        Collections.shuffle(Arrays.asList(targetsShuffled), new Random(System.nanoTime())); 
+        Collections.shuffle(Arrays.asList(targetsShuffled), new Random(System.nanoTime()));
+
+
+            long startTime = System.nanoTime();
 
         for (int target : targetsShuffled) {
 			try {
@@ -292,6 +299,18 @@ public class ServersCommunicationLayer extends Thread {
 				logger.error("Interruption while inserting message into inqueue", ex);
 			}
 		}
+        long endTime = System.nanoTime();
+        if (sm instanceof ConsensusMessage) {
+            ConsensusMessage consensusMessage = (ConsensusMessage) sm;
+            if(consensusMessage.getType() == MessageFactory.PROPOSE) {
+                batchDisseminationTime = (endTime - startTime);
+                logger.debug("Sending message to {} targets took {} ns", targets.length, batchDisseminationTime);
+            }
+        }
+    }
+
+    public long getBatchDisseminationTime() {
+        return batchDisseminationTime;
     }
 
     public void shutdown() {

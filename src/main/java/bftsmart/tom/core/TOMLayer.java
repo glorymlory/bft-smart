@@ -453,7 +453,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until the current consensus finishes
             proposeLock.lock();
-            if (getInExec() != -1 && pipelineManager.getConsensusesInExecution().size() == pipelineManager.maxConsensusesInExec) { //there are already max amount of consensus running
+            if (getInExec() != -1 && pipelineManager.getConsensusesInExecution().size() == pipelineManager.getMaxConsensusesInExec()) { //there are already max amount of consensus running
                 logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
                 logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
                 canPropose.awaitUninterruptibly();
@@ -480,28 +480,28 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 //            logger.debug("There are requests to be ordered. I will propose.");
 
-            proposePipelineLock.lock();
-            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecution().isEmpty()) {
-                int lastInPipelineExec = pipelineManager.getConsensusesInExecution().get(pipelineManager.getConsensusesInExecution().size() - 1);
-
-//                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
-//                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
-//                } else {
-//                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
+//            proposePipelineLock.lock();
+//            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecution().isEmpty()) {
+//                int lastInPipelineExec = pipelineManager.getConsensusesInExecution().get(pipelineManager.getConsensusesInExecution().size() - 1);
+//
+////                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() != null) {
+////                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : {}", lastInPipelineExec, execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent());
+////                } else {
+////                    logger.debug("execManager.getConsensus( {} ).getLastEpoch().isWriteSent() : NULL", lastInPipelineExec);
+////                }
+//
+//                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
+//                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+//                    canProposeInPipeline.awaitUninterruptibly();
+//                    logger.debug("Finished waiting for consensus " + lastInPipelineExec );
 //                }
-
-                if (execManager.getConsensus(lastInPipelineExec).getLastEpoch() == null) {
-                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
-                    canProposeInPipeline.awaitUninterruptibly();
-                    logger.debug("Finished waiting for consensus " + lastInPipelineExec );
-                }
-                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
-                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
-                    canProposeInPipeline.awaitUninterruptibly();
-                    logger.debug("Finished waiting for consensus " + lastInPipelineExec );
-                }
-            }
-            proposePipelineLock.unlock();
+//                if (!execManager.getConsensus(lastInPipelineExec).getLastEpoch().isWriteSent()) {
+//                    logger.debug("Waiting for consensus " + lastInPipelineExec + " finish propose phase.");
+//                    canProposeInPipeline.awaitUninterruptibly();
+//                    logger.debug("Finished waiting for consensus " + lastInPipelineExec );
+//                }
+//            }
+//            proposePipelineLock.unlock();
 
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
                 logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
@@ -572,7 +572,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 proposeLock.unlock();*/
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
-                execManager.getProposer().startConsensus(execId, createPropose(dec));
+                execManager.getProposer().startConsensus(execId, createPropose(dec), dec);
+                pipelineManager.setBatchDisseminationTimeInMilliseconds(execManager.getProposer().getBatchDisseminationTime());
             }
         }
         logger.info("TOMLayer stopped.");
@@ -585,10 +586,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      * @param dec The decision of the consensus
      */
     public void decided(Decision dec) {
-
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
-
+        long consensusLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
+        pipelineManager.updatePipelineConfiguration(consensusLatency);
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 
