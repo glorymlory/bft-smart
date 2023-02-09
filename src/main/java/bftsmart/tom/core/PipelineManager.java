@@ -82,13 +82,13 @@ public class PipelineManager {
 //        why by 2, because before starting a new consensus we have to finish propose dissemination and then "write sent" stage, because during "write sent"
 //        we actually waiting for a reply and during propose we dont.
         if (newMaxConsInExec != maxConsensusesInExec && newMaxConsInExec > 0) {
-            maxConsensusesInExec = newMaxConsInExec;
+//            maxConsensusesInExec = newMaxConsInExec;
             logger.debug("New maxConsensusesInExec: {}", newMaxConsInExec);
             int newWaitForNextConsensusTime = (int) Math.round((double) consensusLatencyInMilliseconds / (double) maxConsensusesInExec);
-            waitForNextConsensusTime = newWaitForNextConsensusTime;
+//            waitForNextConsensusTime = newWaitForNextConsensusTime;
             logger.debug("New waitForNextConsensusTime: {}ms", newWaitForNextConsensusTime);
         } else if(newMaxConsInExec <= 0) {
-            maxConsensusesInExec = 1; // we set it to 1 due to leader not being able to execute more than one consensus at a time
+//            maxConsensusesInExec = 1; // we set it to 1 due to leader not being able to execute more than one consensus at a time
             logger.debug("New maxConsensusesInExec: {}. Setting as default due to the leader load problems.", maxConsensusesInExec);
             return;
         }
