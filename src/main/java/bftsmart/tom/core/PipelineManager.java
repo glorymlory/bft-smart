@@ -3,6 +3,7 @@ package bftsmart.tom.core;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
@@ -66,25 +67,37 @@ public class PipelineManager {
         this.consensusesInExecution = new ArrayList<>();
     }
 
-    public void updatePipelineConfiguration(long consensusLatencyInNanoSeconds) {
+    public void updatePipelineConfiguration(long latencyInNanoseconds, long messageSizeInBytes) {
         if (batchDisseminationTimeInMilliseconds <= 0L) {
             logger.debug("Batch dissemination time is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
 
-        long consensusLatencyInMilliseconds = TimeUnit.MILLISECONDS.convert(consensusLatencyInNanoSeconds, TimeUnit.NANOSECONDS);
-        if (consensusLatencyInMilliseconds <= 0L) {
+        long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(latencyInNanoseconds, TimeUnit.NANOSECONDS);
+        if (latencyInMilliseconds <= 0L) {
             logger.debug("Consensus latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
+        int bandwidth = 100;
+        int bandwidthInBit = bandwidth * 1024 * 1024;
 
-        int newMaxConsInExec = (int) Math.round((double) consensusLatencyInMilliseconds / (double) (batchDisseminationTimeInMilliseconds*2));
+        long timeNeeded = (long) (messageSizeInBytes * 8 / (bandwidth * 1000000)); // Convert Mibit to bits and divide by number of bits to get seconds
+        logger.debug("Time needed for broadcast: {}s", timeNeeded);
+
+        long timeNeededForBroadcast = (long) (messageSizeInBytes * 8 / (bandwidthInBit));
+        long transferTimeInMilliseconds = timeNeededForBroadcast * 1000;
+
+        logger.debug("Time needed for broadcast: {}ms", transferTimeInMilliseconds);
+
+
+
+        int newMaxConsInExec = (int) Math.round((double) latencyInMilliseconds / (double) (transferTimeInMilliseconds*2));
 //        why by 2, because before starting a new consensus we have to finish propose dissemination and then "write sent" stage, because during "write sent"
 //        we actually waiting for a reply and during propose we dont.
         if (newMaxConsInExec != maxConsensusesInExec && newMaxConsInExec > 0) {
 //            maxConsensusesInExec = newMaxConsInExec;
             logger.debug("New maxConsensusesInExec: {}", newMaxConsInExec);
-            int newWaitForNextConsensusTime = (int) Math.round((double) consensusLatencyInMilliseconds / (double) maxConsensusesInExec);
+            int newWaitForNextConsensusTime = (int) Math.round((double) latencyInMilliseconds / (double) maxConsensusesInExec);
 //            waitForNextConsensusTime = newWaitForNextConsensusTime;
             logger.debug("New waitForNextConsensusTime: {}ms", newWaitForNextConsensusTime);
         } else if(newMaxConsInExec <= 0) {
@@ -98,7 +111,7 @@ public class PipelineManager {
         logger.debug("Current maxConsensusesInExec: {}", maxConsensusesInExec);
         logger.debug("Current waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         logger.debug("Current batchDisseminationTime: {}ms", batchDisseminationTimeInMilliseconds);
-        logger.debug("Current consensusLatency: {}ms", consensusLatencyInMilliseconds);
+        logger.debug("Current consensusLatency: {}ms", latencyInMilliseconds);
     }
 
 

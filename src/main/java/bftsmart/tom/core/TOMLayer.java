@@ -589,7 +589,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
         long consensusLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
-        pipelineManager.updatePipelineConfiguration(consensusLatency);
+        pipelineManager.updatePipelineConfiguration(consensusLatency, dec.batchSize);
         this.dt.delivery(dec); // Sends the decision to the delivery thread
     }
 
