@@ -192,6 +192,7 @@ public class AsyncLatencyClient {
                 for (int i = 0; i < this.numberOfOps; i++) {
                     
                     long last_send_instant = System.nanoTime();
+                    final long[] reply_quorum_reached = {0};
                     System.out.println("last_send_instant " + last_send_instant);
                     this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
 
@@ -218,13 +219,14 @@ public class AsyncLatencyClient {
 
                             if (replies >= q) {
                                 if (verbose) System.out.println("[RequestContext] clean request context id: " + context.getReqId());
+                                reply_quorum_reached[0] = System.nanoTime();
                                 serviceProxy.cleanAsynchRequest(context.getOperationId());
                             }
                         }
                     }, this.reqType);
                     if (i > (this.numberOfOps / 2)) {
                         System.out.println("Throughput: " + st.getCount() + " System.nanoTime() - last_send_instant: "+ (System.nanoTime() - last_send_instant));
-                        st.store(System.nanoTime() - last_send_instant);
+                        st.store(reply_quorum_reached[0] - last_send_instant);
                     }
 
                     if (this.interval > 0 || this.rampup > 0) {
