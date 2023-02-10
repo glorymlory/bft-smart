@@ -79,7 +79,8 @@ public class PipelineManager {
         int bandwidthInBit = bandwidth * 1024 * 1024;
 
         logger.debug("Message size in bytes: {}", messageSizeInBytes);
-
+        logger.debug("Bandwidth: {}Mibit/s", bandwidth);
+        logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         long timeNeeded = (long) (messageSizeInBytes * 8 / (bandwidth * 1000000)); // Convert Mibit to bits and divide by number of bits to get seconds
         logger.debug("Time needed for broadcast: {}s", timeNeeded);
 
