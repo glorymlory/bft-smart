@@ -68,10 +68,7 @@ public class PipelineManager {
     }
 
     public void updatePipelineConfiguration(long latencyInNanoseconds, long messageSizeInBytes) {
-        if (batchDisseminationTimeInMilliseconds <= 0L) {
-            logger.debug("Batch dissemination time is not set or extremely small. Skipping pipeline configuration update.");
-            return;
-        }
+
 
         long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(latencyInNanoseconds, TimeUnit.NANOSECONDS);
         if (latencyInMilliseconds <= 0L) {
@@ -89,11 +86,17 @@ public class PipelineManager {
 
         logger.debug("Time needed for broadcast: {}ms", transferTimeInMilliseconds);
 
+        if (transferTimeInMilliseconds <= 0L) {
+            logger.debug("Transfer time is not set or extremely small. Skipping pipeline configuration update.");
+//            return;
+        }
 
 
         int newMaxConsInExec = (int) Math.round((double) latencyInMilliseconds / (double) (transferTimeInMilliseconds*2));
 //        why by 2, because before starting a new consensus we have to finish propose dissemination and then "write sent" stage, because during "write sent"
 //        we actually waiting for a reply and during propose we dont.
+
+
         if (newMaxConsInExec != maxConsensusesInExec && newMaxConsInExec > 0) {
 //            maxConsensusesInExec = newMaxConsInExec;
             logger.debug("New maxConsensusesInExec: {}", newMaxConsInExec);
