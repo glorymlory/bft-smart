@@ -129,7 +129,6 @@ public class PipelineManager {
             maxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
             int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsensusesInExec);
             waitForNextConsensusTime = newWaitForNextConsensusTime;
-            this.suggestedAmountOfConsInPipelineList = new ArrayList<>();
 
             logger.debug("=======Updating pipeline configuration=======");
             logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
@@ -150,5 +149,6 @@ public class PipelineManager {
             logger.debug("New maxConsensusesInExec: {}", maxConsensusesInExec);
             logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         }
+        this.suggestedAmountOfConsInPipelineList.clear();
     }
 }
