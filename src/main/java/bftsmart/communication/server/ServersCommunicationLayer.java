@@ -282,9 +282,6 @@ public class ServersCommunicationLayer extends Thread {
         Integer[] targetsShuffled = Arrays.stream( targets ).boxed().toArray( Integer[]::new );
         Collections.shuffle(Arrays.asList(targetsShuffled), new Random(System.nanoTime()));
 
-
-            long startTime = System.nanoTime();
-
         for (int target : targetsShuffled) {
 			try {
 				if (target == me) {
@@ -299,14 +296,6 @@ public class ServersCommunicationLayer extends Thread {
 				logger.error("Interruption while inserting message into inqueue", ex);
 			}
 		}
-        long endTime = System.nanoTime();
-        if (sm instanceof ConsensusMessage) {
-            ConsensusMessage consensusMessage = (ConsensusMessage) sm;
-            if(consensusMessage.getType() == MessageFactory.PROPOSE) {
-                batchDisseminationTime = (endTime - startTime);
-                logger.debug("Sending message to {} targets took {} ns", targets.length, batchDisseminationTime);
-            }
-        }
     }
 
     public long getBatchDisseminationTime() {
