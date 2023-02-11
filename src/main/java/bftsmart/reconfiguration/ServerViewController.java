@@ -121,7 +121,6 @@ public class ServerViewController extends ViewController {
 
     public byte[] executeUpdates(int cid) {
 
-
         List<Integer> jSet = new LinkedList<>();
         List<Integer> rSet = new LinkedList<>();
         int f = -1;

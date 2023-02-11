@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class PipelineManager {
@@ -71,7 +72,8 @@ public class PipelineManager {
     }
 
     public void updatePipelineConfiguration(long latencyInNanoseconds, long messageSizeInBytes, int[] amountOfReplicas) {
-        int bandwidth = 100;
+        Random random = new Random();
+        int bandwidth = random.nextInt(51) + 30;
         int bandwidthInBit = bandwidth * 1024 * 1024;
         logger.debug("Message size in bytes: {}", messageSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
