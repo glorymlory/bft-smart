@@ -54,7 +54,7 @@
     <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
     <logger name="bftsmart.tom.ServiceReplica" level="TRACE"></logger>
 <!--    <logger name="bftsmart.communication.server.ServersCommunicationLayer" level="TRACE"></logger>-->
-<!--    <logger name="bftsmart.communication.server.ServerConnection" level="TRACE"></logger>-->
+    <logger name="bftsmart.communication.server.ServerConnection" level="TRACE"></logger>
 <!--    <logger name="bftsmart.tom.util.BatchBuilder" level="TRACE"></logger>-->
 
 </configuration>

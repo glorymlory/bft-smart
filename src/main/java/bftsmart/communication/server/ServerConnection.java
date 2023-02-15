@@ -215,7 +215,11 @@ public class ServerConnection {
 					System.arraycopy(messageData, 0, data, 4, messageData.length);
 					System.arraycopy(new byte[] { (byte) 0 }, 0, data, 4 + messageData.length, 1);
 
+					long startTime = System.nanoTime();
 					socketOutStream.write(data);
+					long endTime = System.nanoTime();
+					long elapsedTime = endTime - startTime;
+					System.out.println("Elapsed time: " + elapsedTime / 1000000 + " milliseconds");
 
 					return;
 				} catch (IOException ex) {

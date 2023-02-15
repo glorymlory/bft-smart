@@ -152,7 +152,10 @@ public class PipelineManager {
             maxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
             int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsensusesInExec);
             waitForNextConsensusTime = newWaitForNextConsensusTime;
-        } else if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
+        }
+
+//        TODO remove it
+        if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             if(maxConsensusesInExec >= 10) {
                 maxConsensusesInExec = 5;
