@@ -8,24 +8,32 @@ import java.math.MathContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipelineManager {
     private final int maxAllowedConsensusesInExec;
     private int maxConsensusesInExec;
     private int waitForNextConsensusTime;
-    private int lastConsensusId;
-    private final Logger logger = LoggerFactory.getLogger(this.getClass());
-    private List<Integer> consensusesInExecution = new ArrayList<>();
+    private AtomicLong lastConsensusId = new AtomicLong();
+//    private List<Integer> consensusesInExecution = new ArrayList<>();
+    Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
+
     private Long timestamp_LastConsensusStarted = 0L;
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
     private List<Long> latencyList = new ArrayList<>();
+
+    private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime) {
         this.maxConsensusesInExec = maxConsensusesInExec;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
-        this.lastConsensusId = -1;
+        this.lastConsensusId.set(-1);
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -40,7 +48,7 @@ public class PipelineManager {
         return consensusesInExecution.size() == 0 || getAmountOfMillisecondsToWait() <= 0;
     }
 
-    public List<Integer> getConsensusesInExecution() {
+    public Set<Integer> getConsensusesInExecution() {
         return this.consensusesInExecution;
     }
 
@@ -56,8 +64,8 @@ public class PipelineManager {
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
 
 //            keep track of the consensus with the highest id
-            if(cid > this.lastConsensusId) {
-                this.lastConsensusId = cid;
+            if(cid > this.lastConsensusId.get()) {
+                this.lastConsensusId.set(cid);
             }
         } else {
             logger.debug("Value {} already exist in consensusesInExecution list or the list is full. List size {}: ", cid, this.consensusesInExecution.size());
@@ -75,7 +83,7 @@ public class PipelineManager {
     }
 
     public void cleanUpConsensusesInExec() {
-        this.consensusesInExecution = new ArrayList<>();
+        this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
     public void updatePipelineConfiguration(long latencyInNanoseconds, long proposeLatency, long messageSizeInBytes, int[] amountOfReplicas) {
@@ -163,8 +171,7 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.clear();
     }
 
-    public int getNewConsensusId(){
-        this.lastConsensusId+=1;
-        return this.lastConsensusId ;
+    public long getNewConsensusId(){
+        return this.lastConsensusId.incrementAndGet();
     }
 }
