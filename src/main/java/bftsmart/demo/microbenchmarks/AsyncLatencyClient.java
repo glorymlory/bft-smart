@@ -220,7 +220,7 @@ public class AsyncLatencyClient {
                             if (replies >= q) {
                                 if (verbose) System.out.println("[RequestContext] clean request context id: " + context.getReqId());
                                 reply_quorum_reached[0] = System.nanoTime();
-                                System.out.println("Throughput: " + st.getCount() + "reply_quorum_reached[0] - last_send_instant: "+ (reply_quorum_reached[0] - last_send_instant));
+                                System.out.println("Throughput: " + st.getCount() + " reply_quorum_reached[0] - last_send_instant: "+ (reply_quorum_reached[0] - last_send_instant));
                                 st.store(reply_quorum_reached[0] - last_send_instant);
                                 serviceProxy.cleanAsynchRequest(context.getOperationId());
                             }

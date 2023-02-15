@@ -11,9 +11,10 @@ import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class PipelineManager {
-    private int maxAllowedConsensusesInExec;
+    private final int maxAllowedConsensusesInExec;
     private int maxConsensusesInExec;
     private int waitForNextConsensusTime;
+    private int lastConsensusId;
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
     private List<Integer> consensusesInExecution = new ArrayList<>();
     private Long timestamp_LastConsensusStarted = 0L;
@@ -22,8 +23,9 @@ public class PipelineManager {
 
     public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime) {
         this.maxConsensusesInExec = maxConsensusesInExec;
-        this.waitForNextConsensusTime = waitForNextConsensusTime;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
+        this.waitForNextConsensusTime = waitForNextConsensusTime;
+        this.lastConsensusId = -1;
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -52,6 +54,11 @@ public class PipelineManager {
             timestamp_LastConsensusStarted = System.nanoTime();
             logger.debug("Adding to consensusesInExecution value " + (cid));
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
+
+//            keep track of the consensus with the highest id
+            if(cid > this.lastConsensusId) {
+                this.lastConsensusId = cid;
+            }
         } else {
             logger.debug("Value {} already exist in consensusesInExecution list or the list is full. List size {}: ", cid, this.consensusesInExecution.size());
         }
@@ -71,7 +78,7 @@ public class PipelineManager {
         this.consensusesInExecution = new ArrayList<>();
     }
 
-    public void updatePipelineConfiguration(long latencyInNanoseconds, long messageSizeInBytes, int[] amountOfReplicas) {
+    public void updatePipelineConfiguration(long latencyInNanoseconds, long proposeLatency, long messageSizeInBytes, int[] amountOfReplicas) {
         Random random = new Random();
         int bandwidth = random.nextInt(51) + 30;
         int bandwidthInBit = bandwidth * 1024 * 1024;
@@ -80,13 +87,14 @@ public class PipelineManager {
         logger.debug("latencyInNanoseconds: {}", latencyInNanoseconds);
 
         long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(latencyInNanoseconds, TimeUnit.NANOSECONDS);
+        long proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatency, TimeUnit.NANOSECONDS);
         if (messageSizeInBytes <= 0L || bandwidth <= 0L || latencyInMilliseconds <= 0L) {
             logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
 
-        Integer currentSuggestedAmountOfConsInPipeline = calculateCurrentSuggestedAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, (double) latencyInMilliseconds);
-        if (currentSuggestedAmountOfConsInPipeline == 0) return; // TODO should we take actions here?
+        Integer currentSuggestedAmountOfConsInPipeline = calculateCurrentSuggestedAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, (double) latencyInMilliseconds, proposeInMilliseconds);
+//        if (currentSuggestedAmountOfConsInPipeline == 0) return; // TODO should we take actions here?
 
         if (this.suggestedAmountOfConsInPipelineList.size() >= 100) {
             calculateAndSetNewConfigsForPipeline();
@@ -97,21 +105,28 @@ public class PipelineManager {
         }
     }
 
-    private Integer calculateCurrentSuggestedAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, int bandwidthInBit, double latencyInMilliseconds) {
+    private Integer calculateCurrentSuggestedAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, int bandwidthInBit, double latencyInMilliseconds, long proposeLatency) {
         BigDecimal messageSize = new BigDecimal(messageSizeInBytes);
         BigDecimal bandwidthInBits = new BigDecimal(bandwidthInBit);
         // time needed for broadcast to one replica in seconds
-        BigDecimal totalTransferTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
+        BigDecimal totalTransmissionTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
                 .divide(bandwidthInBits, new MathContext(10))
                 .multiply(new BigDecimal(1000))
                 .multiply(new BigDecimal(amountOfReplicas.length));
-        logger.debug("Total time for broadcasting to all replicas: {}ms", totalTransferTimeInMilliseconds);
+        logger.debug("Total time for broadcasting to all replicas: {}ms", totalTransmissionTimeInMilliseconds);
 
-        if (totalTransferTimeInMilliseconds.compareTo(BigDecimal.ZERO) == 0) {
+        if (totalTransmissionTimeInMilliseconds.compareTo(BigDecimal.ZERO) == 0) {
             logger.debug("Total transfer time is 0. Skipping pipeline configuration update.");
             return 0;
         }
-        int newMaxConsInExec = (int) Math.round(latencyInMilliseconds / (totalTransferTimeInMilliseconds.doubleValue() * 2));
+
+        double totalTimeWithProposeAndTransmission = proposeLatency + (totalTransmissionTimeInMilliseconds.doubleValue() * 2);
+        logger.debug("Total time with propose and transmission: {}ms", totalTimeWithProposeAndTransmission);
+
+        int newMaxConsInExec = (int) Math.round(latencyInMilliseconds / totalTimeWithProposeAndTransmission);
+        logger.debug("New max cons in exec: {}", newMaxConsInExec);
+        int newWaitForNextConsensusTime = (int) Math.round((double) latencyInMilliseconds / (double) newMaxConsInExec);
+        logger.debug("New wait for next consensus time: {}ms", newWaitForNextConsensusTime);
         return newMaxConsInExec;
     }
 
@@ -129,12 +144,8 @@ public class PipelineManager {
             maxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
             int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsensusesInExec);
             waitForNextConsensusTime = newWaitForNextConsensusTime;
-
-            logger.debug("=======Updating pipeline configuration=======");
-            logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
-            logger.debug("New maxConsensusesInExec: {}", maxConsensusesInExec);
-            logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         } else if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
+            logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             if(maxConsensusesInExec >= 10) {
                 maxConsensusesInExec = 5;
             } else if(maxConsensusesInExec >= 5) {
@@ -142,13 +153,18 @@ public class PipelineManager {
             } else {
                 maxConsensusesInExec = 1;
             }
-            int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsensusesInExec);
-            waitForNextConsensusTime = newWaitForNextConsensusTime;
-            logger.debug("=======Updating pipeline configuration=======");
-            logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
-            logger.debug("New maxConsensusesInExec: {}", maxConsensusesInExec);
-            logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
+            waitForNextConsensusTime = 20;
         }
+
+        logger.debug("=======Updating pipeline configuration=======");
+        logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
+        logger.debug("New maxConsensusesInExec: {}", maxConsensusesInExec);
+        logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         this.suggestedAmountOfConsInPipelineList.clear();
+    }
+
+    public int getNewConsensusId(){
+        this.lastConsensusId+=1;
+        return this.lastConsensusId ;
     }
 }
