@@ -40,6 +40,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
+import java.nio.ByteBuffer;
 import java.security.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -415,6 +416,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
         RequestList pendingRequests = clientsManager.getPendingRequests();
+        if (this.controller.getStaticConf().getProcessId() == 0 && dec.getConsensusId() % 51 == 0 && dec.getConsensusId() != 0) {
+            logger.debug("LEADER FAULT CHECK : Waiting 11 seconds ........................... ");
+            return ByteBuffer.allocate(10).array();
+        }
 
 //        logger.debug("Number of pending requets to propose in consensus {}: {}", dec.getConsensusId(), pendingRequests.size());
 
@@ -487,6 +492,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
 //            logger.debug("There are requests to be ordered. I will propose.");
 
+//            TODO make it work
 //            proposePipelineLock.lock();
 //            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecution().isEmpty()) {
 //                int lastInPipelineExec = pipelineManager.getConsensusesInExecution().get(pipelineManager.getConsensusesInExecution().size() - 1);
@@ -521,20 +527,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     pipelineManager.isAllowedToAddToConsensusInExecList()) { //there is no consensus in execution
 
-                // Sets the current consensus
 //                int execId = getLastExec() + 1;
-                readPipelineCIDLock.lock();
-//                logger.debug("getLastExec() : {} pipelineManager.getConsensusesInExecutionList().size() : {}", getLastExec(), pipelineManager.getConsensusesInExecutionList().size());
-                // find the biggest elemen in the list and add 1
-//                int maxValue = -1;
-//                for (Integer val : pipelineManager.getConsensusesInExecution()) {
-//                    maxValue = Math.max(maxValue, val);
-//                }
-//                maxValue = Math.max(maxValue, getLastExec());
-//                logger.debug("maxValue NEW : {}", maxValue);
-//                int execId = getLastExec() + (pipelineManager.getConsensusesInExecutionList().isEmpty() ? 1 : (pipelineManager.getConsensusesInExecutionList().size() + 1));
+//                readPipelineCIDLock.lock();
+                // Sets the current consensus
                 int execId = (int) pipelineManager.getNewConsensusId();
-                readPipelineCIDLock.unlock();
+//                readPipelineCIDLock.unlock();
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();
@@ -594,10 +591,13 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public void decided(Decision dec) {
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
-        long consensusLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
-        long proposeWriteLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
-        logger.debug("Propose latency: {}ms", TimeUnit.MILLISECONDS.convert(proposeWriteLatency, TimeUnit.NANOSECONDS));
-        if (execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+
+//        Adaptive pipeline code
+        if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+            long consensusLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
+            long proposeWriteLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
+            logger.debug("Propose latency: {}ms", TimeUnit.MILLISECONDS.convert(proposeWriteLatency, TimeUnit.NANOSECONDS));
+
             pipelineManager.updatePipelineConfiguration(consensusLatency, proposeWriteLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
         }
 

@@ -337,6 +337,10 @@ public class ClientsManager {
             clientData.getPendingRequests().clear();
         }
 
+        logger.debug("Request received from client {} with session {} and sequence {}", clientId, request.getSession(), request.getSequence());
+        logger.debug("Last message received from client {} was session {} and sequence {}", clientId, clientData.getSession(), clientData.getLastMessageReceived());
+        logger.debug("Request sequence is {}", request.getSequence());
+
         if ((clientData.getLastMessageReceived() == -1) || //first message received or new session (see above)
                 (clientData.getLastMessageReceived() + 1 == request.getSequence()) || //message received is the expected
                 ((request.getSequence() > clientData.getLastMessageReceived()) && !fromClient)) {

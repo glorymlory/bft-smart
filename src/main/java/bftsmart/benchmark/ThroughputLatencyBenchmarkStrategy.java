@@ -329,5 +329,4 @@ public class ThroughputLatencyBenchmarkStrategy implements IBenchmarkStrategy {
 		Executors.newSingleThreadExecutor().shutdown();
 		lock.unlock();
 	}
-
 }

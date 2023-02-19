@@ -105,7 +105,9 @@ public final class DeliveryThread extends Thread {
     public void delivery(Decision dec) {
 
 //		Not sequential pipelining case. Adding to out of sequence values for delivery
+//        TODO last exec should be safe thread.
         if (dec.getConsensusId() > tomLayer.getLastExec() + 1) {
+            logger.debug("Last executed consensus is {}, but received decision for consensus {}", tomLayer.getLastExec(), dec.getConsensusId());
             logger.info("Could not insert decision into decided queue, because value {} is out of sequence. Adding to out of sequence values for delivery", dec.getConsensusId());
             outOfSequenceValuesForDelivery.add(dec);
         } else {
@@ -127,10 +129,6 @@ public final class DeliveryThread extends Thread {
             if (!containsReconfig(dec)) {
 
 //			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
-                // set this decision as the last one from this replica
-//			tomLayer.setLastExec(dec.getConsensusId());
-                // define that end of this execution
-//			tomLayer.setInExec(-1);
                 tomLayer.setLastExecAndRemoveInExec(dec.getConsensusId());
                 if(!outOfSequenceValuesForDelivery.isEmpty()) {
                     processOutOfSequencePipelineDecision();
@@ -348,10 +346,7 @@ public final class DeliveryThread extends Thread {
 
                         // set the consensus associated to the last decision as the last executed
                         logger.debug("Setting last executed consensus to " + lastDecision.getConsensusId());
-//						tomLayer.setLastExec(lastDecision.getConsensusId());
                         // define that end of this execution
-//						tomLayer.setInExec(-1);
-//						tomLayer.removeInExec(lastDecision.getConsensusId());
                         tomLayer.setLastExecAndRemoveInExec(lastDecision.getConsensusId());
                         // ******* EDUARDO END **************//
 

@@ -21,9 +21,13 @@ import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.util.Arrays;
 import java.util.LinkedList;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import bftsmart.tom.leaderchange.LCMessage;
+import bftsmart.tom.leaderchange.RequestsTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -121,6 +125,9 @@ public final class Acceptor {
 	 * @param msg Paxos messages delivered by the communication layer
 	 */
 	public final void deliver(ConsensusMessage msg) {
+		logger.debug("Stopped msg:? " + executionManager.stopped() + " msg id: " + msg.getNumber() + " msg epoch: " + msg.getEpoch()
+				+ " msg type: " + msg.getType() + " msg sender: " + msg.getSender() + " msg value: "
+				+ Arrays.toString(msg.getValue()));
 		if (executionManager.checkLimits(msg)) {
 //			logger.debug("Processing paxos msg with id " + msg.getNumber());
 			processMessage(msg);
