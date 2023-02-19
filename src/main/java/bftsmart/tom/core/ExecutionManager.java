@@ -226,7 +226,7 @@ public final class ExecutionManager {
         
         int inExec = tomLayer.getInExec();
         
-        logger.debug("Received message  " + msg + "timestamp : " + System.nanoTime());
+//        logger.debug("Received message  " + msg + " timestamp : " + System.nanoTime());
 //        logger.debug("I'm at consensus " +
 //                inExec + " and my last consensus is " + lastConsId);
         
@@ -260,6 +260,8 @@ public final class ExecutionManager {
 //                        msg.getNumber() > (lastConsId + controller.getStaticConf().getMaxConsensusesInExec()) ||
 //                        (inExec != -1 && !tomLayer.getAllExecutingInstances().contains(msg.getNumber())) ||
 //                        (inExec == -1 && msg.getType() != MessageFactory.PROPOSE))
+//                TODO: check again if isRetrievingState is necessary
+//                TODO: simplify the condition
                 if ((!pipelineManager.isAllowedToAddToConsensusInExecList() && !pipelineManager.getConsensusesInExecution().contains(msg.getNumber())) ||
                         msg.getNumber() > (lastConsId + pipelineManager.getMaxConsensusesInExec()) ||
                         (pipelineManager.getConsensusesInExecution().size()>0 && msg.getNumber() > (lastConsId + pipelineManager.getMaxConsensusesInExec())) ||

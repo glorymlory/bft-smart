@@ -177,4 +177,7 @@ public class PipelineManager {
     public long getNewConsensusId(){
         return this.lastConsensusId.incrementAndGet();
     }
+    public long getLastConsensusId(){
+        return this.lastConsensusId.get();
+    }
 }

@@ -125,9 +125,6 @@ public final class Acceptor {
 	 * @param msg Paxos messages delivered by the communication layer
 	 */
 	public final void deliver(ConsensusMessage msg) {
-		logger.debug("Stopped msg:? " + executionManager.stopped() + " msg id: " + msg.getNumber() + " msg epoch: " + msg.getEpoch()
-				+ " msg type: " + msg.getType() + " msg sender: " + msg.getSender() + " msg value: "
-				+ Arrays.toString(msg.getValue()));
 		if (executionManager.checkLimits(msg)) {
 //			logger.debug("Processing paxos msg with id " + msg.getNumber());
 			processMessage(msg);
@@ -175,6 +172,7 @@ public final class Acceptor {
 		int ts = epoch.getConsensus().getEts();
 		int ets = executionManager.getConsensus(msg.getNumber()).getEts();
 		logger.debug("PROPOSE received from:{}, for consensus cId:{}, I am:{}, at timestamp: {}", msg.getSender(), cid, me, System.nanoTime());
+		logger.info("========= REPLICA: START CONSENSUS =========");
 		if (msg.getSender() == executionManager.getCurrentLeader() // Is the replica the leader?
 				&& epoch.getTimestamp() == 0 && ts == ets && ets == 0) { // Is all this in epoch 0?
 			executePropose(epoch, msg.getValue());
@@ -205,8 +203,7 @@ public final class Acceptor {
 			/*****************************************/
 
 			// start this consensus if it is not already running
-//			if (cid == tomLayer.getLastExec() + 1) {
-//			TODO && tomLayer.pipelineManager.getConsensusesInExecution().contains(cid)
+//			we can not just check if the list of currently in exec. cons. contains this value. Because this value might be finished executing. (Probably not the case, because we dont remove values if they are out of context.)
 			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + executionManager.getPipelineManager().getMaxConsensusesInExec())) {
 				tomLayer.setInExec(cid);
 			}
@@ -281,8 +278,8 @@ public final class Acceptor {
 	 */
 	private void writeReceived(Epoch epoch, int sender, byte[] value) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("WRITE received from:{}, for consensus cId:{} at timestamp (nano): {}",
-				sender, cid, System.nanoTime());
+//		logger.debug("WRITE received from:{}, for consensus cId:{} at timestamp (nano): {}",
+//				sender, cid, System.nanoTime());
 		epoch.setWrite(sender, value);
 
 		computeWrite(cid, epoch, value);
@@ -415,7 +412,7 @@ public final class Acceptor {
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
+//		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
 		epoch.setAccept(msg.getSender(), msg.getValue());
 		epoch.addToProof(msg);
 
