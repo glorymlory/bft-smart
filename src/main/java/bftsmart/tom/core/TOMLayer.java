@@ -416,11 +416,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
         RequestList pendingRequests = clientsManager.getPendingRequests();
-        if (this.controller.getStaticConf().getProcessId() == 0 && dec.getConsensusId() % 51 == 0 && dec.getConsensusId() != 0) {
-            logger.debug("LEADER FAULT CHECK : Waiting 11 seconds ........................... ");
-            return ByteBuffer.allocate(10).array();
-        }
-
 //        logger.debug("Number of pending requets to propose in consensus {}: {}", dec.getConsensusId(), pendingRequests.size());
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
@@ -576,6 +571,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 proposeLock.unlock();*/
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
+                if (this.controller.getStaticConf().getProcessId() == 0 && dec.getConsensusId() % 51 == 0 && dec.getConsensusId() != 0) {
+                    logger.debug("LEADER FAULT CHECK : Waiting 11 seconds ........................... ");
+                    continue;
+                }
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }
