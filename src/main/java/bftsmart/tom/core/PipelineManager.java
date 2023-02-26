@@ -7,6 +7,7 @@ import oshi.hardware.NetworkIF;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.net.NetworkInterface;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -33,8 +34,8 @@ public class PipelineManager {
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
         this.lastConsensusId.set(-1);
-        this.si = new SystemInfo();
-        this.networkIFs = si.getHardware().getNetworkIFs();
+//        this.si = new SystemInfo();
+//        this.networkIFs = si.getHardware().getNetworkIFs();
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -117,17 +118,22 @@ public class PipelineManager {
 
     private int getCurrentBandwidth() {
         int bandwidthInBit = 100 * 1024 * 1024;
-        try {
 
-            for (NetworkIF networkIF : networkIFs) {
-                if (networkIF.getSpeed() > 0 && networkIF.queryNetworkInterface().isUp() && networkIF.getIPv4addr() != null && networkIF.getIPv4addr().length > 0) {
-                    logger.debug("Network interface: {}", networkIF.getName());
-                    logger.debug("Network interface speed: {}", networkIF.getSpeed());
-                    logger.debug("Network interface has ipv4: {}", networkIF.getIPv4addr());
-                    bandwidthInBit = (int) networkIF.getSpeed();
-                    break;
-                }
-            }
+
+
+        try {
+            Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
+
+
+//            for (NetworkIF networkIF : networkIFs) {
+//                if (networkIF.getSpeed() > 0 && networkIF.queryNetworkInterface().isUp() && networkIF.getIPv4addr() != null && networkIF.getIPv4addr().length > 0) {
+//                    logger.debug("Network interface: {}", networkIF.getName());
+//                    logger.debug("Network interface speed: {}", networkIF.getSpeed());
+//                    logger.debug("Network interface has ipv4: {}", networkIF.getIPv4addr());
+//                    bandwidthInBit = (int) networkIF.getSpeed();
+//                    break;
+//                }
+//            }
 
         } catch (Exception e) {
             logger.error("Error while getting network interface speed: {}", e.getMessage());

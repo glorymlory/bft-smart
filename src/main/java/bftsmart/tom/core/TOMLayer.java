@@ -597,7 +597,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             long proposeWriteLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
             logger.debug("Propose latency: {}ms", TimeUnit.MILLISECONDS.convert(proposeWriteLatency, TimeUnit.NANOSECONDS));
 
-            pipelineManager.updatePipelineConfiguration(consensusLatency, proposeWriteLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
+//            pipelineManager.updatePipelineConfiguration(consensusLatency, proposeWriteLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
         }
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread
