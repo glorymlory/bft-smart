@@ -20,7 +20,7 @@ public class PipelineManager {
     //    private List<Integer> consensusesInExecution = new ArrayList<>();
     Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     private SystemInfo si;
-    private List<NetworkIF> networkIFs;
+    private NetworkIF[] networkIFs;
 
     private Long timestamp_LastConsensusStarted = 0L;
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
