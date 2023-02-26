@@ -2,26 +2,25 @@ package bftsmart.tom.core;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import oshi.SystemInfo;
+import oshi.hardware.NetworkIF;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class PipelineManager {
     private final int maxAllowedConsensusesInExec;
     private int maxConsensusesInExec;
     private int waitForNextConsensusTime;
     private AtomicLong lastConsensusId = new AtomicLong();
-//    private List<Integer> consensusesInExecution = new ArrayList<>();
+    //    private List<Integer> consensusesInExecution = new ArrayList<>();
     Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
+    private SystemInfo si;
+    private List<NetworkIF> networkIFs;
 
     private Long timestamp_LastConsensusStarted = 0L;
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
@@ -34,6 +33,8 @@ public class PipelineManager {
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
         this.lastConsensusId.set(-1);
+        this.si = new SystemInfo();
+        this.networkIFs = si.getHardware().getNetworkIFs();
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -64,7 +65,7 @@ public class PipelineManager {
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
 
 //            keep track of the consensus with the highest id
-            if(cid > this.lastConsensusId.get()) {
+            if (cid > this.lastConsensusId.get()) {
                 this.lastConsensusId.set(cid);
             }
         } else {
@@ -87,16 +88,17 @@ public class PipelineManager {
     }
 
     public void updatePipelineConfiguration(long latencyInNanoseconds, long proposeLatency, long messageSizeInBytes, int[] amountOfReplicas) {
-        Random random = new Random();
-        int bandwidth = random.nextInt(51) + 30;
-        int bandwidthInBit = bandwidth * 1024 * 1024;
+        long start = System.nanoTime();
+        int bandwidthInBit = getCurrentBandwidth();
+        long end = System.nanoTime();
+        logger.debug("Time to get bandwidth: {}ms", TimeUnit.MILLISECONDS.convert((end - start), TimeUnit.NANOSECONDS));
         logger.debug("Message size in bytes: {}", messageSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         logger.debug("latencyInNanoseconds: {}", latencyInNanoseconds);
 
         long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(latencyInNanoseconds, TimeUnit.NANOSECONDS);
         long proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatency, TimeUnit.NANOSECONDS);
-        if (messageSizeInBytes <= 0L || bandwidth <= 0L || latencyInMilliseconds <= 0L) {
+        if (messageSizeInBytes <= 0L || bandwidthInBit <= 0L || latencyInMilliseconds <= 0L) {
             logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
@@ -111,6 +113,26 @@ public class PipelineManager {
             this.latencyList.add(latencyInMilliseconds);
             logger.debug("Not enough measurements to update pipeline configuration, size: {}. Current measurement added: {} with latency: {}\n list: {}", this.suggestedAmountOfConsInPipelineList.size(), currentSuggestedAmountOfConsInPipeline, latencyInMilliseconds, this.suggestedAmountOfConsInPipelineList);
         }
+    }
+
+    private int getCurrentBandwidth() {
+        int bandwidthInBit = 100 * 1024 * 1024;
+        try {
+
+            for (NetworkIF networkIF : networkIFs) {
+                if (networkIF.getSpeed() > 0 && networkIF.queryNetworkInterface().isUp() && networkIF.getIPv4addr() != null && networkIF.getIPv4addr().length > 0) {
+                    logger.debug("Network interface: {}", networkIF.getName());
+                    logger.debug("Network interface speed: {}", networkIF.getSpeed());
+                    logger.debug("Network interface has ipv4: {}", networkIF.getIPv4addr());
+                    bandwidthInBit = (int) networkIF.getSpeed();
+                    break;
+                }
+            }
+
+        } catch (Exception e) {
+            logger.error("Error while getting network interface speed: {}", e.getMessage());
+        }
+        return bandwidthInBit;
     }
 
     private Integer calculateCurrentSuggestedAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, int bandwidthInBit, double latencyInMilliseconds, long proposeLatency) {
@@ -144,11 +166,11 @@ public class PipelineManager {
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
         logger.debug("Calculated averageLatency: {}ms", averageLatency);
 
-        if(averageSuggestedAmountOfConsInPipeline > maxAllowedConsensusesInExec){
+        if (averageSuggestedAmountOfConsInPipeline > maxAllowedConsensusesInExec) {
             averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExec;
         }
 
-        if (averageSuggestedAmountOfConsInPipeline != maxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 0 ) {
+        if (averageSuggestedAmountOfConsInPipeline != maxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 0) {
             maxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
             int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsensusesInExec);
             waitForNextConsensusTime = newWaitForNextConsensusTime;
@@ -157,9 +179,9 @@ public class PipelineManager {
 //        TODO remove it
         if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
-            if(maxConsensusesInExec >= 10) {
+            if (maxConsensusesInExec >= 10) {
                 maxConsensusesInExec = 5;
-            } else if(maxConsensusesInExec >= 5) {
+            } else if (maxConsensusesInExec >= 5) {
                 maxConsensusesInExec = 3;
             } else {
                 maxConsensusesInExec = 1;
@@ -174,10 +196,7 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.clear();
     }
 
-    public long getNewConsensusId(){
+    public long getNewConsensusId() {
         return this.lastConsensusId.incrementAndGet();
-    }
-    public long getLastConsensusId(){
-        return this.lastConsensusId.get();
     }
 }
