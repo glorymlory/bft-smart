@@ -15,22 +15,28 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class PipelineManager {
     private final int maxAllowedConsensusesInExec;
-    private int maxConsensusesInExec;
+    private int currentMaxConsensusesInExec;
     private int waitForNextConsensusTime;
+
     private AtomicLong lastConsensusId = new AtomicLong();
-    //    private List<Integer> consensusesInExecution = new ArrayList<>();
     Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
+
     private SystemInfo si;
     private NetworkIF[] networkIFs;
 
     private Long timestamp_LastConsensusStarted = 0L;
+
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
     private List<Long> latencyList = new ArrayList<>();
+
+    private boolean isProcessingReconfiguration = false;
+    private boolean isReconfigurationTimerStarted = false;
+    private List<Integer> reconfigurationReplicasToBeAdded = new ArrayList<>();
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
     public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime) {
-        this.maxConsensusesInExec = maxConsensusesInExec;
+        this.currentMaxConsensusesInExec = maxConsensusesInExec;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
         this.lastConsensusId.set(-1);
@@ -42,8 +48,8 @@ public class PipelineManager {
         return Math.max(waitForNextConsensusTime - (TimeUnit.MILLISECONDS.convert((System.nanoTime() - timestamp_LastConsensusStarted), TimeUnit.NANOSECONDS)), 0);
     }
 
-    public int getMaxConsensusesInExec() {
-        return maxConsensusesInExec;
+    public int getCurrentMaxConsensusesInExec() {
+        return currentMaxConsensusesInExec;
     }
 
     public boolean isDelayedBeforeNewConsensusStart() {
@@ -55,7 +61,7 @@ public class PipelineManager {
     }
 
     public boolean isAllowedToAddToConsensusInExecList() {
-        return this.consensusesInExecution.size() < maxConsensusesInExec;
+        return this.consensusesInExecution.size() < currentMaxConsensusesInExec;
     }
 
     public void addToConsensusInExecList(int cid) {
@@ -105,26 +111,20 @@ public class PipelineManager {
         }
 
         Integer currentSuggestedAmountOfConsInPipeline = calculateCurrentSuggestedAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, (double) latencyInMilliseconds, proposeInMilliseconds);
-//        if (currentSuggestedAmountOfConsInPipeline == 0) return; // TODO should we take actions here?
 
-        if (this.suggestedAmountOfConsInPipelineList.size() >= 100) {
+        if (this.suggestedAmountOfConsInPipelineList.size() >= 100 && !this.isProcessingReconfiguration) {
             calculateAndSetNewConfigsForPipeline();
         } else {
             this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
             this.latencyList.add(latencyInMilliseconds);
-            logger.debug("Not enough measurements to update pipeline configuration, size: {}. Current measurement added: {} with latency: {}\n list: {}", this.suggestedAmountOfConsInPipelineList.size(), currentSuggestedAmountOfConsInPipeline, latencyInMilliseconds, this.suggestedAmountOfConsInPipelineList);
         }
     }
 
     private int getCurrentBandwidth() {
         int bandwidthInBit = 100 * 1024 * 1024;
 
-
-
         try {
             Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
-
-
 //            for (NetworkIF networkIF : networkIFs) {
 //                if (networkIF.getSpeed() > 0 && networkIF.queryNetworkInterface().isUp() && networkIF.getIPv4addr() != null && networkIF.getIPv4addr().length > 0) {
 //                    logger.debug("Network interface: {}", networkIF.getName());
@@ -144,6 +144,7 @@ public class PipelineManager {
     private Integer calculateCurrentSuggestedAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, int bandwidthInBit, double latencyInMilliseconds, long proposeLatency) {
         BigDecimal messageSize = new BigDecimal(messageSizeInBytes);
         BigDecimal bandwidthInBits = new BigDecimal(bandwidthInBit);
+
         // time needed for broadcast to one replica in seconds
         BigDecimal totalTransmissionTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
                 .divide(bandwidthInBits, new MathContext(10))
@@ -160,15 +161,14 @@ public class PipelineManager {
         logger.debug("Total time with propose and transmission: {}ms", totalTimeWithProposeAndTransmission);
 
         int newMaxConsInExec = (int) Math.round(latencyInMilliseconds / totalTimeWithProposeAndTransmission);
-        logger.debug("New max cons in exec: {}", newMaxConsInExec);
-        int newWaitForNextConsensusTime = (int) Math.round((double) latencyInMilliseconds / (double) newMaxConsInExec);
-        logger.debug("New wait for next consensus time: {}ms", newWaitForNextConsensusTime);
+        logger.debug("calculated max cons in exec: {}", newMaxConsInExec);
         return newMaxConsInExec;
     }
 
     private void calculateAndSetNewConfigsForPipeline() {
         int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
         long averageLatency = (int) Math.round(this.latencyList.stream().mapToLong(a -> a).average().getAsDouble());
+
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
         logger.debug("Calculated averageLatency: {}ms", averageLatency);
 
@@ -176,33 +176,71 @@ public class PipelineManager {
             averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExec;
         }
 
-        if (averageSuggestedAmountOfConsInPipeline != maxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 0) {
-            maxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
-            int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsensusesInExec);
+        if (averageSuggestedAmountOfConsInPipeline != currentMaxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 0) {
+            currentMaxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
+            int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) currentMaxConsensusesInExec);
             waitForNextConsensusTime = newWaitForNextConsensusTime;
         }
 
 //        TODO remove it
         if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
-            if (maxConsensusesInExec >= 10) {
-                maxConsensusesInExec = 5;
-            } else if (maxConsensusesInExec >= 5) {
-                maxConsensusesInExec = 3;
+            if (currentMaxConsensusesInExec >= 10) {
+                currentMaxConsensusesInExec = 5;
+            } else if (currentMaxConsensusesInExec >= 5) {
+                currentMaxConsensusesInExec = 3;
             } else {
-                maxConsensusesInExec = 1;
+                currentMaxConsensusesInExec = 1;
             }
             waitForNextConsensusTime = 20;
         }
 
         logger.debug("=======Updating pipeline configuration=======");
         logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
-        logger.debug("New maxConsensusesInExec: {}", maxConsensusesInExec);
+        logger.debug("New maxConsensusesInExec: {}", currentMaxConsensusesInExec);
         logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         this.suggestedAmountOfConsInPipelineList.clear();
     }
 
     public long getNewConsensusId() {
         return this.lastConsensusId.incrementAndGet();
+    }
+
+    public void setPipelineInReconfigurationMode(int newReplicaId) {
+        logger.debug("Waiting for new replica join: {}", newReplicaId);
+        isProcessingReconfiguration = true;
+        currentMaxConsensusesInExec = 1;
+        reconfigurationReplicasToBeAdded.add(newReplicaId); // this value can be used to check if the new replica is already executing consensuses
+
+        validateReconfigurationModeStatus();
+    }
+
+    public void validateReconfigurationModeStatus() {
+        if (isProcessingReconfiguration && !isReconfigurationTimerStarted && consensusesInExecution.size() <= 1) {
+            isReconfigurationTimerStarted = true;
+            setReconfigurationTimer();
+        }
+    }
+
+    public void setPipelineOutOfReconfigurationMode() {
+        logger.debug("Reconfiguration mode for pipeline finished. New replicas: {}", reconfigurationReplicasToBeAdded.toString());
+        isProcessingReconfiguration = false;
+        isReconfigurationTimerStarted = false;
+        reconfigurationReplicasToBeAdded.clear();
+    }
+
+    public void setReconfigurationTimer() {
+        Timer timer = new Timer();
+        TimerTask task = new TimerTask() {
+            @Override
+            public void run() {
+                if (consensusesInExecution.size() <= 1) {
+                    setPipelineOutOfReconfigurationMode();
+                }
+            }
+        };
+
+        // Schedule the task to run after a specified delay (in milliseconds)
+        timer.schedule(task, 200);
     }
 }

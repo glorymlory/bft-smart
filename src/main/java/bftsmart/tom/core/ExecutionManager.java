@@ -263,8 +263,8 @@ public final class ExecutionManager {
 //                TODO: check again if isRetrievingState is necessary
 //                TODO: simplify the condition
                 if ((!pipelineManager.isAllowedToAddToConsensusInExecList() && !pipelineManager.getConsensusesInExecution().contains(msg.getNumber())) ||
-                        msg.getNumber() > (lastConsId + pipelineManager.getMaxConsensusesInExec()) ||
-                        (pipelineManager.getConsensusesInExecution().size()>0 && msg.getNumber() > (lastConsId + pipelineManager.getMaxConsensusesInExec())) ||
+                        msg.getNumber() > (lastConsId + pipelineManager.getCurrentMaxConsensusesInExec()) ||
+                        (pipelineManager.getConsensusesInExecution().size()>0 && msg.getNumber() > (lastConsId + pipelineManager.getCurrentMaxConsensusesInExec())) ||
                         (pipelineManager.getConsensusesInExecution().isEmpty() && msg.getType() != MessageFactory.PROPOSE))
                 { //not propose message for the next consensus
                     logger.debug("Message for consensus " + 

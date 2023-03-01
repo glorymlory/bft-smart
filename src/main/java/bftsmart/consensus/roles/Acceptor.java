@@ -21,13 +21,9 @@ import java.io.ObjectOutputStream;
 import java.security.PrivateKey;
 import java.util.Arrays;
 import java.util.LinkedList;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import bftsmart.tom.leaderchange.LCMessage;
-import bftsmart.tom.leaderchange.RequestsTimer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -204,7 +200,7 @@ public final class Acceptor {
 
 			// start this consensus if it is not already running
 //			we can not just check if the list of currently in exec. cons. contains this value. Because this value might be finished executing. (Probably not the case, because we dont remove values if they are out of context.)
-			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + executionManager.getPipelineManager().getMaxConsensusesInExec())) {
+			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + executionManager.getPipelineManager().getCurrentMaxConsensusesInExec())) {
 				tomLayer.setInExec(cid);
 			}
 			epoch.deserializedPropValue = tomLayer.checkProposedValue(value, true);
@@ -314,9 +310,6 @@ public final class Acceptor {
 				if (epoch.getConsensus().getDecision().firstMessageProposed != null) {
 
 					epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
-//					logger.debug("Accept sent time in (computeWrite): {}", epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime);
-//					logger.debug("Accept sent time - write sent start : {}", epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime - epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime);
-//					logger.debug("Accept sent time - consensus start : {}", epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime - epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime);
 				}
 
 				ConsensusMessage cm = epoch.fetchAccept();
@@ -327,9 +320,9 @@ public final class Acceptor {
 															// PROPOSE message
 															// still matches the value that ended up being written...
 
-//					logger.debug(
-//							"Speculative ACCEPT message for consensus {} matches the written value, sending it to the other replicas",
-//							cid);
+					logger.debug(
+							"Speculative ACCEPT message for consensus {} matches the written value, sending it to the other replicas",
+							cid);
 
 					communication.getServersConn().send(targets, cm, true);
 
@@ -341,8 +334,8 @@ public final class Acceptor {
 					proofExecutor.submit(() -> {
 
 						// Create a cryptographic proof for this ACCEPT message
-//						logger.debug(
-//								"Creating cryptographic proof for the correct ACCEPT message from consensus " + cid);
+						logger.debug(
+								"Creating cryptographic proof for the correct ACCEPT message from consensus " + cid);
 						insertProof(correctAccept, epoch.deserializedPropValue);
 
 						communication.getServersConn().send(targets, correctAccept, true);
@@ -365,7 +358,7 @@ public final class Acceptor {
 			proofExecutor.submit(() -> {
 
 				// Create a cryptographic proof for this ACCEPT message
-//				logger.debug("Creating cryptographic proof for speculative ACCEPT message from consensus " + cid);
+				logger.debug("Creating cryptographic proof for speculative ACCEPT message from consensus " + cid);
 				insertProof(cm, epoch.deserializedPropValue);
 
 				epoch.setAcceptMsg(cm);
@@ -412,7 +405,7 @@ public final class Acceptor {
 	 */
 	private void acceptReceived(Epoch epoch, ConsensusMessage msg) {
 		int cid = epoch.getConsensus().getId();
-//		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
+		logger.debug("ACCEPT from " + msg.getSender() + " for consensus " + cid + "at timestamp : " + System.nanoTime());
 		epoch.setAccept(msg.getSender(), msg.getValue());
 		epoch.addToProof(msg);
 
@@ -443,9 +436,7 @@ public final class Acceptor {
 	private void decide(Epoch epoch) {
 		if (epoch.getConsensus().getDecision().firstMessageProposed != null) {
 			epoch.getConsensus().getDecision().firstMessageProposed.decisionTime = System.nanoTime();
-//			logger.debug("decisionTime time : {}", epoch.getConsensus().getDecision().firstMessageProposed.decisionTime);
 		}
-
 
 		epoch.getConsensus().decided(epoch, true);
 	}

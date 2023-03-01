@@ -53,12 +53,9 @@ public class Proposer {
      */
     public void startConsensus(int cid, byte[] value) {
         //******* EDUARDO BEGIN **************//
-        long startTime = System.nanoTime();
         communication.send(this.controller.getCurrentViewAcceptors(),
                 factory.createPropose(cid, 0, value));
         long endTime = System.nanoTime();
-        batchDisseminationTime = (endTime - startTime);
-        System.out.println("Proposer: startConsensus: cid: " + cid + " value: " + value.length + " duration: " + (endTime - startTime));
         //******* EDUARDO END **************//
     }
 }

@@ -72,10 +72,10 @@ public final class DeliveryThread extends Thread {
                           ServerViewController controller) {
         super("Delivery Thread");
         this.decided = new LinkedBlockingQueue<>();
-//		TODO ist it ok to init it with 1k max size?
+//		TODO ist it ok to init it with 10k max size?
         // comparator in acsending order
 
-        this.outOfSequenceValuesForDelivery = new PriorityBlockingQueue<>(1000, (o1, o2) -> {
+        this.outOfSequenceValuesForDelivery = new PriorityBlockingQueue<>(10000, (o1, o2) -> {
             if (o1.getConsensusId() == o2.getConsensusId()) {
                 return 0;
             } else if (o1.getConsensusId() > o2.getConsensusId()) {
@@ -109,7 +109,7 @@ public final class DeliveryThread extends Thread {
         if (dec.getConsensusId() > tomLayer.getLastExec() + 1) {
             logger.debug("Last finished consensus: {}, received DECIDED consensus to deliver: {}", tomLayer.getLastExec(), dec.getConsensusId());
             logger.info("Could not insert decision into decided queue, because value {} is out of sequence. Adding to out of sequence values for delivery", dec.getConsensusId());
-            logger.debug("Current out of sequence values for delivery: {}", outOfSequenceValuesForDelivery.toString());
+            logger.debug("Current out of sequence values for delivery: {}", outOfSequenceValuesForDelivery);
             outOfSequenceValuesForDelivery.add(dec);
         } else {
             try {
@@ -129,17 +129,27 @@ public final class DeliveryThread extends Thread {
 
             if (!containsReconfig(dec)) {
 
-//			logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
+                logger.debug("Decision from consensus " + dec.getConsensusId() + " does not contain reconfiguration");
                 tomLayer.setLastExecAndRemoveInExec(dec.getConsensusId());
-                if(!outOfSequenceValuesForDelivery.isEmpty()) {
+                if (!outOfSequenceValuesForDelivery.isEmpty()) {
                     processOutOfSequencePipelineDecision();
                 }
-//				TODO what do we do if there is still value in outOfSequenceValuesForDelivery and failure happened?
             } // else if (tomLayer.controller.getStaticConf().getProcessId() == 0)
             // System.exit(0);
             else {
                 logger.debug("Decision from consensus " + dec.getConsensusId() + " has reconfiguration");
                 lastReconfig = dec.getConsensusId();
+
+//                TODO check we add a replica not remove it.
+                if(this.tomLayer.execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+                    for (TOMMessage decidedMessage : dec.getDeserializedValue()) {
+                        if (decidedMessage.getReqType() == TOMMessageType.RECONFIG
+                                && decidedMessage.getViewID() == controller.getCurrentViewId()) {
+                            this.tomLayer.pipelineManager.setPipelineInReconfigurationMode(decidedMessage.getViewID());
+                            return;
+                        }
+                    }
+                }
             }
         }
     }

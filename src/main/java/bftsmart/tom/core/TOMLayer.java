@@ -383,7 +383,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
         } else {
-//            logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
+            logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
             if (clientsManager.requestReceived(msg, true, communication)) {
 
                 if (controller.getStaticConf().getBatchTimeout() == -1) {
@@ -416,7 +416,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public byte[] createPropose(Decision dec) {
         // Retrieve a set of pending requests from the clients manager
         RequestList pendingRequests = clientsManager.getPendingRequests();
-//        logger.debug("Number of pending requets to propose in consensus {}: {}", dec.getConsensusId(), pendingRequests.size());
+        logger.debug("Number of pending requets to propose in consensus {}: {}", dec.getConsensusId(), pendingRequests.size());
 
         int numberOfMessages = pendingRequests.size(); // number of messages retrieved
         int numberOfNonces = this.controller.getStaticConf().getNumberOfNonces(); // ammount of nonces to be generated
@@ -425,7 +425,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         if (dec.getConsensusId() > -1) { // if this is from the leader change, it doesnt matter
             dec.firstMessageProposed = pendingRequests.getFirst();
             dec.firstMessageProposed.consensusStartTime = System.nanoTime();
-//            logger.debug("Consensus start time: {}", dec.firstMessageProposed.consensusStartTime);
+
         }
         dec.batchSize = numberOfMessages;
 
@@ -446,7 +446,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
-//            logger.debug("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
+            logger.debug("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
 
             //******* EDUARDO BEGIN **************//
             if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
@@ -485,9 +485,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
-//            logger.debug("There are requests to be ordered. I will propose.");
+            logger.debug("There are requests to be ordered. I will propose.");
 
-//            TODO make it work
+//            TODO make it work, and run tests if it makes any difference in performance
 //            proposePipelineLock.lock();
 //            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecution().isEmpty()) {
 //                int lastInPipelineExec = pipelineManager.getConsensusesInExecution().get(pipelineManager.getConsensusesInExecution().size() - 1);
@@ -517,16 +517,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 logger.debug("Continue ...");
             }
 
-
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     pipelineManager.isAllowedToAddToConsensusInExecList()) { //there is no consensus in execution
 
-//                int execId = getLastExec() + 1;
-//                readPipelineCIDLock.lock();
                 // Sets the current consensus
                 int execId = (int) pipelineManager.getNewConsensusId();
-//                readPipelineCIDLock.unlock();
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();
@@ -552,29 +548,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
                 }
 
-//                TODO currently it blocks entire thread. We have to use canPropose and in adding newCons check for timeDiff. and invoke canPorpose.signalALl()
-//                remove thread.sleep and instead just do check everytime we want to start a new cons :) and if already allowed we start.
-//                but what if no invocation of the method that do signalAll. Then we anyway have to check it regularly.
-//                CHECK IT AGAIN.: looks like working good.
-//                proposeLock.lock();
-//                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-//                    logger.debug("Waiting before starting new consensus...");
-//                    setDelayBeforeConsStartInPipeline();
-//                }
-//                proposeLock.unlock();
-               /* // Todo pipelinig: never wait here ! (the Propose was not yet sent out to the others!
-                proposeLock.lock();
-                if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-                    logger.debug("Waiting before starting new consensus...");
-                    setDelayBeforeConsStartInPipeline();
-                }
-                proposeLock.unlock();*/
-
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
-                if (this.controller.getStaticConf().getProcessId() == 0 && dec.getConsensusId() % 51 == 0 && dec.getConsensusId() != 0) {
-                    logger.debug("LEADER FAULT CHECK : Waiting 11 seconds ........................... ");
-                    continue;
-                }
+////                TODO REMOVE ME
+//                if (this.controller.getStaticConf().getProcessId() == 0 && dec.getConsensusId() % 51 == 0 && dec.getConsensusId() != 0) {
+//                    logger.debug("LEADER FAULT CHECK : Waiting 11 seconds ........................... ");
+//                    continue;
+//                }
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }
@@ -591,7 +570,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
 
-//        Adaptive pipeline code
+        this.pipelineManager.validateReconfigurationModeStatus();
+        /* Adaptive pipeline code */
+//       check if current replica is leader
         if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
             long consensusLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
             long proposeWriteLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
@@ -616,9 +597,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
     public TOMMessage[] checkProposedValue(byte[] proposedValue, boolean addToClientManager) {
 
         try {
-
-//            logger.debug("Checking proposed value");
-
             BatchReader batchReader = new BatchReader(proposedValue,
                     this.controller.getStaticConf().getUseSignatures() == 1);
 
