@@ -40,7 +40,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.Serializable;
-import java.nio.ByteBuffer;
 import java.security.*;
 import java.util.*;
 import java.util.concurrent.CountDownLatch;
@@ -574,11 +573,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         /* Adaptive pipeline code */
 //       check if current replica is leader
         if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
-            long consensusLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
-            long proposeWriteLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
-            logger.debug("Propose latency: {}ms", TimeUnit.MILLISECONDS.convert(proposeWriteLatency, TimeUnit.NANOSECONDS));
-
-//            pipelineManager.updatePipelineConfiguration(consensusLatency, proposeWriteLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
+            long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
+            long proposeStageLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
+            logger.debug("Propose latency: {}ms", TimeUnit.MILLISECONDS.convert(proposeStageLatency, TimeUnit.NANOSECONDS));
+            pipelineManager.monitorPipelineLoad(writeStageLatency, proposeStageLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
+        } else if(execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()){
+            pipelineManager.stopGettingBandwidthRepeatedlyAndRemoveListeners();
         }
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread

@@ -141,15 +141,7 @@ public final class DeliveryThread extends Thread {
                 lastReconfig = dec.getConsensusId();
 
 //                TODO check we add a replica not remove it.
-                if(this.tomLayer.execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
-                    for (TOMMessage decidedMessage : dec.getDeserializedValue()) {
-                        if (decidedMessage.getReqType() == TOMMessageType.RECONFIG
-                                && decidedMessage.getViewID() == controller.getCurrentViewId()) {
-                            this.tomLayer.pipelineManager.setPipelineInReconfigurationMode(decidedMessage.getViewID());
-                            return;
-                        }
-                    }
-                }
+                this.tomLayer.pipelineManager.setPipelineInReconfigurationMode();
             }
         }
     }

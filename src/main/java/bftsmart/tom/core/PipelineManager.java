@@ -1,5 +1,9 @@
 package bftsmart.tom.core;
 
+import fr.bmartel.speedtest.SpeedTestReport;
+import fr.bmartel.speedtest.SpeedTestSocket;
+import fr.bmartel.speedtest.inter.ISpeedTestListener;
+import fr.bmartel.speedtest.model.SpeedTestError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import oshi.SystemInfo;
@@ -7,22 +11,25 @@ import oshi.hardware.NetworkIF;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
-import java.net.NetworkInterface;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipelineManager {
     private final int maxAllowedConsensusesInExec;
+    private final int reconfigurationTimerModeTime;
     private int currentMaxConsensusesInExec;
     private int waitForNextConsensusTime;
 
     private AtomicLong lastConsensusId = new AtomicLong();
     Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
 
-    private SystemInfo si;
-    private NetworkIF[] networkIFs;
+    SpeedTestSocket speedTestSocket;
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
+    private boolean isBandwidthRunningRepeatedly = false;
 
     private Long timestamp_LastConsensusStarted = 0L;
 
@@ -39,9 +46,9 @@ public class PipelineManager {
         this.currentMaxConsensusesInExec = maxConsensusesInExec;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
+        reconfigurationTimerModeTime = 200; // 200 ms
         this.lastConsensusId.set(-1);
-//        this.si = new SystemInfo();
-//        this.networkIFs = si.getHardware().getNetworkIFs();
+        this.speedTestSocket = new SpeedTestSocket();
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -68,7 +75,7 @@ public class PipelineManager {
         if (!this.consensusesInExecution.contains(cid) && isAllowedToAddToConsensusInExecList()) {
             this.consensusesInExecution.add(cid);
             timestamp_LastConsensusStarted = System.nanoTime();
-            logger.debug("Adding to consensusesInExecution value " + (cid));
+            logger.info("Adding to consensusesInExecution value " + (cid));
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
 
 //            keep track of the consensus with the highest id
@@ -83,7 +90,7 @@ public class PipelineManager {
     public void removeFromConsensusInExecList(int cid) {
         if (!this.consensusesInExecution.isEmpty() && this.consensusesInExecution.contains(cid)) {
             this.consensusesInExecution.remove((Integer) cid);
-            logger.debug("Removing in consensusesInExecution value: {}", cid);
+            logger.info("Removing in consensusesInExecution value: {}", cid);
             logger.debug("Current consensusesInExecution : {} ", this.consensusesInExecution.toString());
         } else {
             logger.warn("Cannot remove value {} in consensusesInExecution list because value not in the list.", cid);
@@ -94,56 +101,90 @@ public class PipelineManager {
         this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
-    public void updatePipelineConfiguration(long latencyInNanoseconds, long proposeLatency, long messageSizeInBytes, int[] amountOfReplicas) {
-        long start = System.nanoTime();
-        int bandwidthInBit = getCurrentBandwidth();
-        long end = System.nanoTime();
-        logger.debug("Time to get bandwidth: {}ms", TimeUnit.MILLISECONDS.convert((end - start), TimeUnit.NANOSECONDS));
+    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long proposeLatencyInNanoseconds, long messageSizeInBytes, int[] amountOfReplicas) {
+        if(!isBandwidthRunningRepeatedly) {
+            isBandwidthRunningRepeatedly = true;
+            startBandwidthMonitorRepeatedly();
+        }
+
+        BigDecimal bandwidthInBit = speedTestSocket.getLiveReport().getTransferRateBit();
+
         logger.debug("Message size in bytes: {}", messageSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
-        logger.debug("latencyInNanoseconds: {}", latencyInNanoseconds);
+        logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
 
-        long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(latencyInNanoseconds, TimeUnit.NANOSECONDS);
-        long proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatency, TimeUnit.NANOSECONDS);
-        if (messageSizeInBytes <= 0L || bandwidthInBit <= 0L || latencyInMilliseconds <= 0L) {
+        long writeInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
+        long proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
+
+        if (messageSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || writeInMilliseconds <= 0L) {
             logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
 
-        Integer currentSuggestedAmountOfConsInPipeline = calculateCurrentSuggestedAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, (double) latencyInMilliseconds, proposeInMilliseconds);
+        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, (double) writeInMilliseconds, proposeInMilliseconds);
 
         if (this.suggestedAmountOfConsInPipelineList.size() >= 100 && !this.isProcessingReconfiguration) {
-            calculateAndSetNewConfigsForPipeline();
+            updatePipelineConfiguration();
         } else {
             this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
-            this.latencyList.add(latencyInMilliseconds);
+            this.latencyList.add(writeInMilliseconds);
         }
     }
 
-    private int getCurrentBandwidth() {
-        int bandwidthInBit = 100 * 1024 * 1024;
+    private void startBandwidthMonitorRepeatedly() {
+        final int initialDelay = 0;
+        final int period = 5; // seconds
 
+        addBandwidthListener();
+        scheduler.scheduleAtFixedRate(() -> {
+            try {
+                logger.debug("starting speed test");
+                speedTestSocket.startFixedDownload("https://speed.hetzner.de/100MB.bin", 1000, 500);
+            } catch (Exception e) {
+                logger.error("Error while getting bandwidth", e);
+            }
+        }, initialDelay, period, TimeUnit.SECONDS);
+    }
+
+    public void stopGettingBandwidthRepeatedlyAndRemoveListeners() {
+        isBandwidthRunningRepeatedly = false;
+        scheduler.shutdown();
         try {
-            Enumeration<NetworkInterface> nets = NetworkInterface.getNetworkInterfaces();
-//            for (NetworkIF networkIF : networkIFs) {
-//                if (networkIF.getSpeed() > 0 && networkIF.queryNetworkInterface().isUp() && networkIF.getIPv4addr() != null && networkIF.getIPv4addr().length > 0) {
-//                    logger.debug("Network interface: {}", networkIF.getName());
-//                    logger.debug("Network interface speed: {}", networkIF.getSpeed());
-//                    logger.debug("Network interface has ipv4: {}", networkIF.getIPv4addr());
-//                    bandwidthInBit = (int) networkIF.getSpeed();
-//                    break;
-//                }
-//            }
-
-        } catch (Exception e) {
-            logger.error("Error while getting network interface speed: {}", e.getMessage());
+            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
+                scheduler.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
         }
-        return bandwidthInBit;
+        speedTestSocket.closeSocket();
+        speedTestSocket.clearListeners();
     }
 
-    private Integer calculateCurrentSuggestedAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, int bandwidthInBit, double latencyInMilliseconds, long proposeLatency) {
+    private void addBandwidthListener() {
+        speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
+            @Override
+            public void onCompletion(SpeedTestReport report) {
+                // called when download/upload is complete
+                System.out.println("[COMPLETED] rate in bit/s   : " + report.getTransferRateBit());
+            }
+
+            @Override
+            public void onError(SpeedTestError speedTestError, String errorMessage) {
+                // called when a download/upload error occur
+            }
+
+            @Override
+            public void onProgress(float percent, SpeedTestReport report) {
+                // called to notify download/upload progress
+                System.out.println("[PROGRESS] progress : " + percent + "%");
+                System.out.println("[PROGRESS] rate in bit/s   : " + report.getTransferRateBit());
+            }
+        });
+    }
+
+    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, BigDecimal bandwidthInBits, double latencyInMilliseconds, long proposeLatency) {
         BigDecimal messageSize = new BigDecimal(messageSizeInBytes);
-        BigDecimal bandwidthInBits = new BigDecimal(bandwidthInBit);
 
         // time needed for broadcast to one replica in seconds
         BigDecimal totalTransmissionTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
@@ -165,7 +206,7 @@ public class PipelineManager {
         return newMaxConsInExec;
     }
 
-    private void calculateAndSetNewConfigsForPipeline() {
+    private void updatePipelineConfiguration() {
         int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
         long averageLatency = (int) Math.round(this.latencyList.stream().mapToLong(a -> a).average().getAsDouble());
 
@@ -182,17 +223,10 @@ public class PipelineManager {
             waitForNextConsensusTime = newWaitForNextConsensusTime;
         }
 
-//        TODO remove it
         if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
-            if (currentMaxConsensusesInExec >= 10) {
-                currentMaxConsensusesInExec = 5;
-            } else if (currentMaxConsensusesInExec >= 5) {
-                currentMaxConsensusesInExec = 3;
-            } else {
-                currentMaxConsensusesInExec = 1;
-            }
-            waitForNextConsensusTime = 20;
+            currentMaxConsensusesInExec = 1;
+            waitForNextConsensusTime = 0;
         }
 
         logger.debug("=======Updating pipeline configuration=======");
@@ -206,11 +240,11 @@ public class PipelineManager {
         return this.lastConsensusId.incrementAndGet();
     }
 
-    public void setPipelineInReconfigurationMode(int newReplicaId) {
-        logger.debug("Waiting for new replica join: {}", newReplicaId);
+    public void setPipelineInReconfigurationMode() {
+        logger.debug("Waiting for new replica join: {}");
         isProcessingReconfiguration = true;
         currentMaxConsensusesInExec = 1;
-        reconfigurationReplicasToBeAdded.add(newReplicaId); // this value can be used to check if the new replica is already executing consensuses
+//        reconfigurationReplicasToBeAdded.add(newReplicaId); // this value can be used to check if the new replica is already executing consensuses
 
         validateReconfigurationModeStatus();
     }
@@ -240,7 +274,6 @@ public class PipelineManager {
             }
         };
 
-        // Schedule the task to run after a specified delay (in milliseconds)
-        timer.schedule(task, 200);
+        timer.schedule(task, reconfigurationTimerModeTime);
     }
 }
