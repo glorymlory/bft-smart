@@ -20,10 +20,6 @@ public class PipelineManager {
     private AtomicLong lastConsensusId = new AtomicLong();
     Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
 
-//    SpeedTestSocket speedTestSocket;
-//    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
-//    private boolean isBandwidthRunningRepeatedly = false;
-
     private Long timestamp_LastConsensusStarted = 0L;
     private BigDecimal bandwidthInBit;
 
@@ -43,7 +39,6 @@ public class PipelineManager {
         reconfigurationTimerModeTime = 200; // 200 ms
         this.lastConsensusId.set(-1);
         this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit*1048576);
-//        this.speedTestSocket = new SpeedTestSocket();
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -97,12 +92,6 @@ public class PipelineManager {
     }
 
     public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messageSizeInBytes, int amountOfReplicas) {
-//        if(!isBandwidthRunningRepeatedly) {
-//            isBandwidthRunningRepeatedly = true;
-//            startBandwidthMonitorRepeatedly();
-//        }
-
-//        BigDecimal bandwidthInBit = speedTestSocket.getLiveReport().getTransferRateBit();
         logger.debug("Message size in bytes: {}", messageSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
@@ -114,7 +103,7 @@ public class PipelineManager {
             return;
         }
 
-        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, latencyInMilliseconds);
+        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, latencyInMilliseconds);
 
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
         this.latencyList.add(latencyInMilliseconds);
@@ -124,73 +113,23 @@ public class PipelineManager {
         }
     }
 
-    private void startBandwidthMonitorRepeatedly() {
-        final int initialDelay = 0;
-        final int period = 5; // seconds
+    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, long latencyInMilliseconds) {
+        double transmissionTimeMs = calculateTransmissionTime(Math.toIntExact(messageSizeInBytes), bandwidthInBit.doubleValue(),amountOfReplicas);
+        logger.debug("Total time with propose and write transmission: {}ms", transmissionTimeMs);
 
-//        addBandwidthListener();
-//        scheduler.scheduleAtFixedRate(() -> {
-//            try {
-//                logger.debug("starting speed test");
-//                speedTestSocket.startFixedDownload("https://speed.hetzner.de/100MB.bin", 1000, 500);
-//            } catch (Exception e) {
-//                logger.error("Error while getting bandwidth", e);
-//            }
-//        }, initialDelay, period, TimeUnit.SECONDS);
-    }
-
-    public void stopGettingBandwidthRepeatedlyAndRemoveListeners() {
-//        isBandwidthRunningRepeatedly = false;
-//        scheduler.shutdown();
-//        try {
-//            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
-//                scheduler.shutdownNow();
-//            }
-//        } catch (InterruptedException e) {
-//            scheduler.shutdownNow();
-//            Thread.currentThread().interrupt();
-//        }
-//        speedTestSocket.closeSocket();
-//        speedTestSocket.clearListeners();
-    }
-
-    private void addBandwidthListener() {
-//        speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
-//            @Override
-//            public void onCompletion(SpeedTestReport report) {
-//                // called when download/upload is complete
-//                System.out.println("[COMPLETED] rate in bit/s   : " + report.getTransferRateBit());
-//            }
-//
-//            @Override
-//            public void onError(SpeedTestError speedTestError, String errorMessage) {
-//                // called when a download/upload error occur
-//            }
-//
-//            @Override
-//            public void onProgress(float percent, SpeedTestReport report) {
-//                // called to notify download/upload progress
-//                System.out.println("[PROGRESS] progress : " + percent + "%");
-//                System.out.println("[PROGRESS] rate in bit/s   : " + report.getTransferRateBit());
-//            }
-//        });
-    }
-
-    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, BigDecimal bandwidthInBits, long latencyInMilliseconds) {
-        BigDecimal messageSize = new BigDecimal(messageSizeInBytes);
-
-        BigDecimal totalTransmissionTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
-                .divide(bandwidthInBits, new MathContext(10))
-                .multiply(new BigDecimal(1000))
-                .multiply(new BigDecimal(amountOfReplicas));
-
-        totalTransmissionTimeInMilliseconds = totalTransmissionTimeInMilliseconds.multiply(BigDecimal.valueOf(2));
-        logger.debug("Total time with propose and write transmission: {}ms", totalTransmissionTimeInMilliseconds);
-
-        int newMaxConsInExec = BigDecimal.valueOf(latencyInMilliseconds).divide(totalTransmissionTimeInMilliseconds,2, RoundingMode.HALF_UP).intValue();
-        logger.debug("calculated max cons in exec: {}", newMaxConsInExec);
-        logger.debug("current max cons in exec: {}", currentMaxConsensusesInExec);
+        int newMaxConsInExec =  (int) Math.round(latencyInMilliseconds/transmissionTimeMs);
+        logger.debug("Calculated max cons in exec: {}", newMaxConsInExec);
+        logger.debug("Current max cons in exec: {}", currentMaxConsensusesInExec);
         return newMaxConsInExec;
+    }
+
+    private static double calculateTransmissionTime(int packetSizeBytes, double dataRateMibit, int amountOfReplicas) {
+        double packetSizeBits = packetSizeBytes * 8; // Convert packet size from bytes to bits
+        double dataRateBits = dataRateMibit;
+        double transmissionTimeSeconds = packetSizeBits / dataRateBits; // Calculate transmission time in seconds
+        transmissionTimeSeconds = transmissionTimeSeconds * 1000; // Convert transmission time from seconds to milliseconds
+        transmissionTimeSeconds = transmissionTimeSeconds * amountOfReplicas; // Multiply by amount of replicas
+        return transmissionTimeSeconds*2; // Multiply by 2 to account for both propose and write
     }
 
     private void updatePipelineConfiguration() {
@@ -198,7 +137,6 @@ public class PipelineManager {
         long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
 
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
-        logger.debug("Calculated averageLatency: {}ms", averageLatency);
 
         if (averageSuggestedAmountOfConsInPipeline > maxAllowedConsensusesInExec) {
             averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExec;
@@ -230,17 +168,16 @@ public class PipelineManager {
 
     public void setPipelineInReconfigurationMode() {
         logger.debug("Waiting for new replica join: {}");
-//        isProcessingReconfiguration = true;
-//        currentMaxConsensusesInExec = 1;
-//        reconfigurationReplicasToBeAdded.add(newReplicaId); // this value can be used to check if the new replica is already executing consensuses
+        isProcessingReconfiguration = true;
+        currentMaxConsensusesInExec = 1;
 
         validateReconfigurationModeStatus();
     }
 
     public void validateReconfigurationModeStatus() {
         if (isProcessingReconfiguration && !isReconfigurationTimerStarted && consensusesInExecution.size() <= 1) {
-//            isReconfigurationTimerStarted = true;
-//            setReconfigurationTimer();
+            isReconfigurationTimerStarted = true;
+            setReconfigurationTimer();
         }
     }
 
