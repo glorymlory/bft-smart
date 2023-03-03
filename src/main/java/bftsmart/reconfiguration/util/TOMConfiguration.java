@@ -65,6 +65,7 @@ public class TOMConfiguration extends Configuration {
     private int clientInvokeOrderedTimeout;
     private int maxConsensusesInExec;
     private int delayBeforeNewConsensusProposeInMillisec;
+    private int bandwidthMibit;
 
     /* Tulio Ribeiro*/
     //private Boolean ssltls=true;
@@ -426,6 +427,14 @@ public class TOMConfiguration extends Configuration {
                 delayBeforeNewConsensusProposeInMillisec = Integer.parseInt(s);
             }
 
+            s = (String) configs.remove("system.pipeline.test.bandwidthMibit");
+            if (s == null) {
+                bandwidthMibit = 100;
+            } else {
+                bandwidthMibit = Integer.parseInt(s);
+            }
+
+
         } catch (Exception e) {
             logger.error("Could not parse system configuration file",e);
         }
@@ -607,6 +616,8 @@ public class TOMConfiguration extends Configuration {
     public int getMaxConsensusesInExec(){return maxConsensusesInExec;}
 
     public int getDelayBeforeNewConsensusProposeInMillisec(){return delayBeforeNewConsensusProposeInMillisec;}
+
+    public int getBandwidthMibit(){return bandwidthMibit;}
 
     /**
      * Tulio Ribeiro ## SSL/TLS getters.

@@ -570,12 +570,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.setLeader(execManager.getCurrentLeader());
 
         this.pipelineManager.validateReconfigurationModeStatus();
+
         /* Adaptive pipeline code */
-//       check if current replica is leader
         if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
             long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
             long proposeStageLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
-            logger.debug("Propose latency: {}ms", TimeUnit.MILLISECONDS.convert(proposeStageLatency, TimeUnit.NANOSECONDS));
+
             pipelineManager.monitorPipelineLoad(writeStageLatency, proposeStageLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
         } else if(execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()){
             pipelineManager.stopGettingBandwidthRepeatedlyAndRemoveListeners();

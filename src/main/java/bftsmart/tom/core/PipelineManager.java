@@ -1,20 +1,12 @@
 package bftsmart.tom.core;
 
-import fr.bmartel.speedtest.SpeedTestReport;
-import fr.bmartel.speedtest.SpeedTestSocket;
-import fr.bmartel.speedtest.inter.ISpeedTestListener;
-import fr.bmartel.speedtest.model.SpeedTestError;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import oshi.SystemInfo;
-import oshi.hardware.NetworkIF;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -27,14 +19,15 @@ public class PipelineManager {
     private AtomicLong lastConsensusId = new AtomicLong();
     Set<Integer> consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
 
-    SpeedTestSocket speedTestSocket;
-    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
-    private boolean isBandwidthRunningRepeatedly = false;
+//    SpeedTestSocket speedTestSocket;
+//    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(5);
+//    private boolean isBandwidthRunningRepeatedly = false;
 
     private Long timestamp_LastConsensusStarted = 0L;
+    private BigDecimal bandwidthInBit;
 
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
-    private List<Long> latencyList = new ArrayList<>();
+    private List<Double> latencyList = new ArrayList<>();
 
     private boolean isProcessingReconfiguration = false;
     private boolean isReconfigurationTimerStarted = false;
@@ -42,13 +35,14 @@ public class PipelineManager {
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
-    public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime) {
+    public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime, int bandwidthMibit) {
         this.currentMaxConsensusesInExec = maxConsensusesInExec;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
         reconfigurationTimerModeTime = 200; // 200 ms
         this.lastConsensusId.set(-1);
-        this.speedTestSocket = new SpeedTestSocket();
+        this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit*1048576);
+//        this.speedTestSocket = new SpeedTestSocket();
     }
 
     public long getAmountOfMillisecondsToWait() {
@@ -101,29 +95,28 @@ public class PipelineManager {
         this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
-    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long proposeLatencyInNanoseconds, long messageSizeInBytes, int[] amountOfReplicas) {
-        if(!isBandwidthRunningRepeatedly) {
-            isBandwidthRunningRepeatedly = true;
-            startBandwidthMonitorRepeatedly();
-        }
+    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long proposeLatencyInNanoseconds, long messageSizeInBytes, int amountOfReplicas) {
+//        if(!isBandwidthRunningRepeatedly) {
+//            isBandwidthRunningRepeatedly = true;
+//            startBandwidthMonitorRepeatedly();
+//        }
 
-        BigDecimal bandwidthInBit = speedTestSocket.getLiveReport().getTransferRateBit();
-
+//        BigDecimal bandwidthInBit = speedTestSocket.getLiveReport().getTransferRateBit();
         logger.debug("Message size in bytes: {}", messageSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
 
-        long writeInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
-        long proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
+        double writeInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
+        double proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
 
         if (messageSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || writeInMilliseconds <= 0L) {
             logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
 
-        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, (double) writeInMilliseconds, proposeInMilliseconds);
+        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, writeInMilliseconds, proposeInMilliseconds);
 
-        if (this.suggestedAmountOfConsInPipelineList.size() >= 100 && !this.isProcessingReconfiguration) {
+        if (this.suggestedAmountOfConsInPipelineList.size() >= 10 && !this.isProcessingReconfiguration) {
             updatePipelineConfiguration();
         } else {
             this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
@@ -135,80 +128,74 @@ public class PipelineManager {
         final int initialDelay = 0;
         final int period = 5; // seconds
 
-        addBandwidthListener();
-        scheduler.scheduleAtFixedRate(() -> {
-            try {
-                logger.debug("starting speed test");
-                speedTestSocket.startFixedDownload("https://speed.hetzner.de/100MB.bin", 1000, 500);
-            } catch (Exception e) {
-                logger.error("Error while getting bandwidth", e);
-            }
-        }, initialDelay, period, TimeUnit.SECONDS);
+//        addBandwidthListener();
+//        scheduler.scheduleAtFixedRate(() -> {
+//            try {
+//                logger.debug("starting speed test");
+//                speedTestSocket.startFixedDownload("https://speed.hetzner.de/100MB.bin", 1000, 500);
+//            } catch (Exception e) {
+//                logger.error("Error while getting bandwidth", e);
+//            }
+//        }, initialDelay, period, TimeUnit.SECONDS);
     }
 
     public void stopGettingBandwidthRepeatedlyAndRemoveListeners() {
-        isBandwidthRunningRepeatedly = false;
-        scheduler.shutdown();
-        try {
-            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
-                scheduler.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            scheduler.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
-        speedTestSocket.closeSocket();
-        speedTestSocket.clearListeners();
+//        isBandwidthRunningRepeatedly = false;
+//        scheduler.shutdown();
+//        try {
+//            if (!scheduler.awaitTermination(60, TimeUnit.SECONDS)) {
+//                scheduler.shutdownNow();
+//            }
+//        } catch (InterruptedException e) {
+//            scheduler.shutdownNow();
+//            Thread.currentThread().interrupt();
+//        }
+//        speedTestSocket.closeSocket();
+//        speedTestSocket.clearListeners();
     }
 
     private void addBandwidthListener() {
-        speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
-            @Override
-            public void onCompletion(SpeedTestReport report) {
-                // called when download/upload is complete
-                System.out.println("[COMPLETED] rate in bit/s   : " + report.getTransferRateBit());
-            }
-
-            @Override
-            public void onError(SpeedTestError speedTestError, String errorMessage) {
-                // called when a download/upload error occur
-            }
-
-            @Override
-            public void onProgress(float percent, SpeedTestReport report) {
-                // called to notify download/upload progress
-                System.out.println("[PROGRESS] progress : " + percent + "%");
-                System.out.println("[PROGRESS] rate in bit/s   : " + report.getTransferRateBit());
-            }
-        });
+//        speedTestSocket.addSpeedTestListener(new ISpeedTestListener() {
+//            @Override
+//            public void onCompletion(SpeedTestReport report) {
+//                // called when download/upload is complete
+//                System.out.println("[COMPLETED] rate in bit/s   : " + report.getTransferRateBit());
+//            }
+//
+//            @Override
+//            public void onError(SpeedTestError speedTestError, String errorMessage) {
+//                // called when a download/upload error occur
+//            }
+//
+//            @Override
+//            public void onProgress(float percent, SpeedTestReport report) {
+//                // called to notify download/upload progress
+//                System.out.println("[PROGRESS] progress : " + percent + "%");
+//                System.out.println("[PROGRESS] rate in bit/s   : " + report.getTransferRateBit());
+//            }
+//        });
     }
 
-    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int[] amountOfReplicas, BigDecimal bandwidthInBits, double latencyInMilliseconds, long proposeLatency) {
+    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, BigDecimal bandwidthInBits, double latencyInMilliseconds, double proposeLatency) {
         BigDecimal messageSize = new BigDecimal(messageSizeInBytes);
 
-        // time needed for broadcast to one replica in seconds
         BigDecimal totalTransmissionTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
                 .divide(bandwidthInBits, new MathContext(10))
                 .multiply(new BigDecimal(1000))
-                .multiply(new BigDecimal(amountOfReplicas.length));
+                .multiply(new BigDecimal(amountOfReplicas));
         logger.debug("Total time for broadcasting to all replicas: {}ms", totalTransmissionTimeInMilliseconds);
 
-        if (totalTransmissionTimeInMilliseconds.compareTo(BigDecimal.ZERO) == 0) {
-            logger.debug("Total transfer time is 0. Skipping pipeline configuration update.");
-            return 0;
-        }
+        totalTransmissionTimeInMilliseconds = totalTransmissionTimeInMilliseconds.multiply(BigDecimal.valueOf(2));
+        logger.debug("Total time with propose and transmission: {}ms", totalTransmissionTimeInMilliseconds);
 
-        double totalTimeWithProposeAndTransmission = proposeLatency + (totalTransmissionTimeInMilliseconds.doubleValue() * 2);
-        logger.debug("Total time with propose and transmission: {}ms", totalTimeWithProposeAndTransmission);
-
-        int newMaxConsInExec = (int) Math.round(latencyInMilliseconds / totalTimeWithProposeAndTransmission);
+        int newMaxConsInExec = new BigDecimal(latencyInMilliseconds).divide(totalTransmissionTimeInMilliseconds).intValue();
         logger.debug("calculated max cons in exec: {}", newMaxConsInExec);
         return newMaxConsInExec;
     }
 
     private void updatePipelineConfiguration() {
         int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
-        long averageLatency = (int) Math.round(this.latencyList.stream().mapToLong(a -> a).average().getAsDouble());
+        long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
 
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
         logger.debug("Calculated averageLatency: {}ms", averageLatency);
@@ -242,8 +229,8 @@ public class PipelineManager {
 
     public void setPipelineInReconfigurationMode() {
         logger.debug("Waiting for new replica join: {}");
-        isProcessingReconfiguration = true;
-        currentMaxConsensusesInExec = 1;
+//        isProcessingReconfiguration = true;
+//        currentMaxConsensusesInExec = 1;
 //        reconfigurationReplicasToBeAdded.add(newReplicaId); // this value can be used to check if the new replica is already executing consensuses
 
         validateReconfigurationModeStatus();
@@ -251,8 +238,8 @@ public class PipelineManager {
 
     public void validateReconfigurationModeStatus() {
         if (isProcessingReconfiguration && !isReconfigurationTimerStarted && consensusesInExecution.size() <= 1) {
-            isReconfigurationTimerStarted = true;
-            setReconfigurationTimer();
+//            isReconfigurationTimerStarted = true;
+//            setReconfigurationTimer();
         }
     }
 
