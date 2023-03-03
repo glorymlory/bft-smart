@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +28,7 @@ public class PipelineManager {
     private BigDecimal bandwidthInBit;
 
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
-    private List<Double> latencyList = new ArrayList<>();
+    private List<Long> latencyList = new ArrayList<>();
 
     private boolean isProcessingReconfiguration = false;
     private boolean isReconfigurationTimerStarted = false;
@@ -95,7 +96,7 @@ public class PipelineManager {
         this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
-    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long proposeLatencyInNanoseconds, long messageSizeInBytes, int amountOfReplicas) {
+    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messageSizeInBytes, int amountOfReplicas) {
 //        if(!isBandwidthRunningRepeatedly) {
 //            isBandwidthRunningRepeatedly = true;
 //            startBandwidthMonitorRepeatedly();
@@ -106,21 +107,20 @@ public class PipelineManager {
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
 
-        double writeInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
-        double proposeInMilliseconds = TimeUnit.MILLISECONDS.convert(proposeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
+        long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
 
-        if (messageSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || writeInMilliseconds <= 0L) {
+        if (messageSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || latencyInMilliseconds <= 0L) {
             logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
 
-        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, writeInMilliseconds, proposeInMilliseconds);
+        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, bandwidthInBit, latencyInMilliseconds);
 
-        if (this.suggestedAmountOfConsInPipelineList.size() >= 10 && !this.isProcessingReconfiguration) {
+        this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
+        this.latencyList.add(latencyInMilliseconds);
+
+        if ((this.suggestedAmountOfConsInPipelineList.size() >= 10 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
             updatePipelineConfiguration();
-        } else {
-            this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
-            this.latencyList.add(writeInMilliseconds);
         }
     }
 
@@ -176,20 +176,20 @@ public class PipelineManager {
 //        });
     }
 
-    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, BigDecimal bandwidthInBits, double latencyInMilliseconds, double proposeLatency) {
+    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, BigDecimal bandwidthInBits, long latencyInMilliseconds) {
         BigDecimal messageSize = new BigDecimal(messageSizeInBytes);
 
         BigDecimal totalTransmissionTimeInMilliseconds = messageSize.multiply(new BigDecimal(8))
                 .divide(bandwidthInBits, new MathContext(10))
                 .multiply(new BigDecimal(1000))
                 .multiply(new BigDecimal(amountOfReplicas));
-        logger.debug("Total time for broadcasting to all replicas: {}ms", totalTransmissionTimeInMilliseconds);
 
         totalTransmissionTimeInMilliseconds = totalTransmissionTimeInMilliseconds.multiply(BigDecimal.valueOf(2));
-        logger.debug("Total time with propose and transmission: {}ms", totalTransmissionTimeInMilliseconds);
+        logger.debug("Total time with propose and write transmission: {}ms", totalTransmissionTimeInMilliseconds);
 
-        int newMaxConsInExec = new BigDecimal(latencyInMilliseconds).divide(totalTransmissionTimeInMilliseconds).intValue();
+        int newMaxConsInExec = BigDecimal.valueOf(latencyInMilliseconds).divide(totalTransmissionTimeInMilliseconds,2, RoundingMode.HALF_UP).intValue();
         logger.debug("calculated max cons in exec: {}", newMaxConsInExec);
+        logger.debug("current max cons in exec: {}", currentMaxConsensusesInExec);
         return newMaxConsInExec;
     }
 
@@ -221,6 +221,7 @@ public class PipelineManager {
         logger.debug("New maxConsensusesInExec: {}", currentMaxConsensusesInExec);
         logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         this.suggestedAmountOfConsInPipelineList.clear();
+        this.latencyList.clear();
     }
 
     public long getNewConsensusId() {

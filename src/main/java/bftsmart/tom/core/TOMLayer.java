@@ -574,9 +574,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         /* Adaptive pipeline code */
         if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
             long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
-            long proposeStageLatency = dec.firstMessageProposed.writeSentTime - dec.firstMessageProposed.consensusStartTime;
+            long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
+            long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
 
-            pipelineManager.monitorPipelineLoad(writeStageLatency, proposeStageLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors());
+            pipelineManager.monitorPipelineLoad(writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
         } else if(execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()){
             pipelineManager.stopGettingBandwidthRepeatedlyAndRemoveListeners();
         }
