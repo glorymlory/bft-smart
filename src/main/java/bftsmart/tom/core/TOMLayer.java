@@ -381,7 +381,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
         } else {
-            logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
+//            logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
             if (clientsManager.requestReceived(msg, true, communication)) {
 
                 if (controller.getStaticConf().getBatchTimeout() == -1) {
@@ -508,7 +508,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                }
 //            }
 //            proposePipelineLock.unlock();
-            logger.debug("is delayed before new consensus start? {} ", pipelineManager.isDelayedBeforeNewConsensusStart());
+
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
                 logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
                 setDelayBeforeConsStartInPipeline();
@@ -547,11 +547,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
-////                TODO REMOVE ME
-//                if (this.controller.getStaticConf().getProcessId() == 0 && dec.getConsensusId() % 51 == 0 && dec.getConsensusId() != 0) {
-//                    logger.debug("LEADER FAULT CHECK : Waiting 11 seconds ........................... ");
-//                    continue;
-//                }
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }

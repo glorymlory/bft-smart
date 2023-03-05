@@ -122,7 +122,7 @@ public final class Acceptor {
 	 */
 	public final void deliver(ConsensusMessage msg) {
 		if (executionManager.checkLimits(msg)) {
-//			logger.debug("Processing paxos msg with id " + msg.getNumber());
+			logger.debug("Processing paxos msg with id " + msg.getNumber());
 			processMessage(msg);
 		} else {
 			logger.debug("Out of context msg with id " + msg.getNumber());
@@ -214,18 +214,13 @@ public final class Acceptor {
 
 				}
 				epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime = System.nanoTime();
-//				logger.debug("Propose received: {}", epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime);
-//				logger.debug("Start time - Propose received: {}", epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime - epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime);
 
 				if (controller.getStaticConf().isBFT()) {
-//					logger.debug("Sending WRITE for " + cid);
+					logger.debug("Sending WRITE for " + cid);
 //					logger.debug("THREAD  id in executePropose WRITE SENT :  {}", Thread.currentThread().getId());
 
 					epoch.setWrite(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
-//					logger.debug("Write sent time in Sending WRITE for : {}", epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime);
-//					logger.debug("write sent time - propose received : {}", epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime - epoch.getConsensus().getDecision().firstMessageProposed.proposeReceivedTime);
-//					logger.debug("write sent time - Consensus start : {}", epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime - epoch.getConsensus().getDecision().firstMessageProposed.consensusStartTime);
 
 					logger.debug("Sending WRITE for cId:{}, I am:{}, at timestamp: {}", cid, me, System.nanoTime());
 					communication.send(this.controller.getCurrentViewOtherAcceptors(),
@@ -241,8 +236,6 @@ public final class Acceptor {
 					epoch.setAccept(me, epoch.propValueHash);
 					epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime = System.nanoTime();
 					epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime = System.nanoTime();
-//					logger.debug("Write sent time : {}", epoch.getConsensus().getDecision().firstMessageProposed.writeSentTime);
-//					logger.debug("Accept sent time : {}", epoch.getConsensus().getDecision().firstMessageProposed.acceptSentTime);
 
 					/**** LEADER CHANGE CODE! ******/
 					logger.debug("[CFT Mode] Setting consensus " + cid + " QuorumWrite tiemstamp to "
@@ -274,8 +267,8 @@ public final class Acceptor {
 	 */
 	private void writeReceived(Epoch epoch, int sender, byte[] value) {
 		int cid = epoch.getConsensus().getId();
-//		logger.debug("WRITE received from:{}, for consensus cId:{} at timestamp (nano): {}",
-//				sender, cid, System.nanoTime());
+		logger.debug("WRITE received from:{}, for consensus cId:{} at timestamp (nano): {}",
+				sender, cid, System.nanoTime());
 		epoch.setWrite(sender, value);
 
 		computeWrite(cid, epoch, value);

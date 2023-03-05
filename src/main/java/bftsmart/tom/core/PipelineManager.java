@@ -159,7 +159,7 @@ public class PipelineManager {
         if (averageSuggestedAmountOfConsInPipeline != currentMaxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 1) {
             currentMaxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
             int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) currentMaxConsensusesInExec);
-            if(newWaitForNextConsensusTime > 0 && newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
+            if(newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
                 waitForNextConsensusTime = newWaitForNextConsensusTime;
             } else {
                 waitForNextConsensusTime = maxWaitForNextConsensusTime;
