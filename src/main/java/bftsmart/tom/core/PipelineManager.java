@@ -10,6 +10,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipelineManager {
+    // only for the leader
     private final int maxAllowedConsensusesInExec;
     private final int reconfigurationTimerModeTime;
     private int currentMaxConsensusesInExec;
@@ -106,9 +107,17 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
         this.latencyList.add(latencyInMilliseconds);
 
-        if ((this.suggestedAmountOfConsInPipelineList.size() >= 5 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
+        if(isPausedTillLastSuggestedAmountIsReached()) {
+            return;
+        }
+
+        if ((this.suggestedAmountOfConsInPipelineList.size() >= 1 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
             updatePipelineConfiguration();
         }
+    }
+
+    private boolean isPausedTillLastSuggestedAmountIsReached() {
+        return this.currentMaxConsensusesInExec < this.maxAllowedConsensusesInExec && this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec;
     }
 
     private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, long latencyInMilliseconds) {
