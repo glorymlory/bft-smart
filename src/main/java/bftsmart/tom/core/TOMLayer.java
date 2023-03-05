@@ -45,7 +45,6 @@ import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -445,7 +444,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
-            logger.debug("Next leader for CID=" + (getLastExec() + 1) + ": " + execManager.getCurrentLeader());
+            logger.debug("Next leader for CID=" + (pipelineManager.getLastConsensusId() + 1) + ": " + execManager.getCurrentLeader());
 
             //******* EDUARDO BEGIN **************//
             if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
@@ -509,7 +508,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                }
 //            }
 //            proposePipelineLock.unlock();
-
+            logger.debug("is delayed before new consensus start? {} ", pipelineManager.isDelayedBeforeNewConsensusStart());
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
                 logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
                 setDelayBeforeConsStartInPipeline();
@@ -521,7 +520,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     pipelineManager.isAllowedToAddToConsensusInExecList()) { //there is no consensus in execution
 
                 // Sets the current consensus
-                int execId = (int) pipelineManager.getNewConsensusId();
+                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();

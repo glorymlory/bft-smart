@@ -4,8 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
-import java.math.MathContext;
-import java.math.RoundingMode;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -161,8 +159,12 @@ public class PipelineManager {
         this.latencyList.clear();
     }
 
-    public long getNewConsensusId() {
+    public long getNewConsensusIdAndIncrement() {
         return this.lastConsensusId.incrementAndGet();
+    }
+
+    public long getLastConsensusId() {
+        return this.lastConsensusId.get();
     }
 
     public void setPipelineInReconfigurationMode() {
