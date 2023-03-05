@@ -92,33 +92,33 @@ public class PipelineManager {
         this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
-    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messageSizeInBytes, int amountOfReplicas) {
-        logger.debug("Message size in bytes: {}", messageSizeInBytes);
+    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messagesSizeInBytes, int currentBatchSize, int maxBatchSize,  int amountOfReplicas) {
+        logger.debug("Message size in bytes: {}", messagesSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
 
         long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
 
-        if (messageSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || latencyInMilliseconds <= 0L) {
+        if (messagesSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || latencyInMilliseconds <= 0L) {
             logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
             return;
         }
 
-        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messageSizeInBytes, amountOfReplicas, latencyInMilliseconds);
+        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messagesSizeInBytes, amountOfReplicas, latencyInMilliseconds);
 
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
         this.latencyList.add(latencyInMilliseconds);
 
-        if(isPausedTillLastSuggestedAmountIsReached() && currentSuggestedAmountOfConsInPipeline >= this.currentMaxConsensusesInExec) {
-            return;
-        }
+//        if(isConfigUpdatePaused()) {
+//            return;
+//        }
 
         if ((this.suggestedAmountOfConsInPipelineList.size() >= 1 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
-            updatePipelineConfiguration();
+            updatePipelineConfiguration(currentBatchSize, maxBatchSize);
         }
     }
 
-    private boolean isPausedTillLastSuggestedAmountIsReached() {
+    private boolean isConfigUpdatePaused() {
         logger.debug("this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec: {}", this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec);
         return this.currentMaxConsensusesInExec < this.maxAllowedConsensusesInExec && this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec;
     }
@@ -141,7 +141,7 @@ public class PipelineManager {
         return transmissionTimeSeconds*2; // Multiply by 2 to account for both propose and write
     }
 
-    private void updatePipelineConfiguration() {
+    private void updatePipelineConfiguration(int batchSize, int maxBatchSize) {
         int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
         long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
 
@@ -161,7 +161,10 @@ public class PipelineManager {
             }
         }
 
-        if (averageSuggestedAmountOfConsInPipeline == 0 || averageSuggestedAmountOfConsInPipeline==1) { // should not be the cast at all.
+        if(batchSize == maxBatchSize && currentMaxConsensusesInExec == 1) {
+            currentMaxConsensusesInExec = 3;
+            waitForNextConsensusTime = 0;
+        } else if (averageSuggestedAmountOfConsInPipeline == 0 || averageSuggestedAmountOfConsInPipeline==1) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             currentMaxConsensusesInExec = 1;
             waitForNextConsensusTime = 0;
