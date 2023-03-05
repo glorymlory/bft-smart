@@ -108,7 +108,7 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
         this.latencyList.add(latencyInMilliseconds);
 
-        if ((this.suggestedAmountOfConsInPipelineList.size() >= 10 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
+        if ((this.suggestedAmountOfConsInPipelineList.size() >= 5 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
             updatePipelineConfiguration();
         }
     }
@@ -123,9 +123,8 @@ public class PipelineManager {
         return newMaxConsInExec;
     }
 
-    private static double calculateTransmissionTime(int packetSizeBytes, double dataRateMibit, int amountOfReplicas) {
+    private static double calculateTransmissionTime(int packetSizeBytes, double dataRateBits, int amountOfReplicas) {
         double packetSizeBits = packetSizeBytes * 8; // Convert packet size from bytes to bits
-        double dataRateBits = dataRateMibit;
         double transmissionTimeSeconds = packetSizeBits / dataRateBits; // Calculate transmission time in seconds
         transmissionTimeSeconds = transmissionTimeSeconds * 1000; // Convert transmission time from seconds to milliseconds
         transmissionTimeSeconds = transmissionTimeSeconds * amountOfReplicas; // Multiply by amount of replicas

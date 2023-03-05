@@ -577,7 +577,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
             long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
 
-            pipelineManager.monitorPipelineLoad(writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+            pipelineManager.monitorPipelineLoad(writeStageLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
         }
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread
