@@ -36,8 +36,8 @@ public class PipelineManager {
         this.currentMaxConsensusesInExec = maxConsensusesInExec;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
-        this.maxWaitForNextConsensusTime = 80;
-        reconfigurationTimerModeTime = 200; // 200 ms
+        this.maxWaitForNextConsensusTime = 60;
+        reconfigurationTimerModeTime = 1200; // 200 ms
         this.lastConsensusId.set(-1);
         this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit*1048576);
     }
@@ -147,6 +147,10 @@ public class PipelineManager {
 
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
 
+        if(batchSize == maxBatchSize) {
+            averageSuggestedAmountOfConsInPipeline+=1;
+        }
+
         if (averageSuggestedAmountOfConsInPipeline > maxAllowedConsensusesInExec) {
             averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExec;
         }
@@ -161,14 +165,12 @@ public class PipelineManager {
             }
         }
 
-        if(batchSize == maxBatchSize && currentMaxConsensusesInExec == 1) {
-            currentMaxConsensusesInExec = 3;
-            waitForNextConsensusTime = 0;
-        } else if (averageSuggestedAmountOfConsInPipeline == 0 || averageSuggestedAmountOfConsInPipeline==1) { // should not be the cast at all.
+        else if (averageSuggestedAmountOfConsInPipeline == 0 || averageSuggestedAmountOfConsInPipeline==1) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             currentMaxConsensusesInExec = 1;
             waitForNextConsensusTime = 0;
         }
+
 
         logger.debug("=======Updating pipeline configuration=======");
         logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
