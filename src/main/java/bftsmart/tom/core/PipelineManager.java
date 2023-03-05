@@ -107,7 +107,7 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
         this.latencyList.add(latencyInMilliseconds);
 
-        if(isPausedTillLastSuggestedAmountIsReached()) {
+        if(isPausedTillLastSuggestedAmountIsReached() && currentSuggestedAmountOfConsInPipeline >= this.currentMaxConsensusesInExec) {
             return;
         }
 
@@ -117,6 +117,7 @@ public class PipelineManager {
     }
 
     private boolean isPausedTillLastSuggestedAmountIsReached() {
+        logger.debug("this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec: {}", this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec);
         return this.currentMaxConsensusesInExec < this.maxAllowedConsensusesInExec && this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec;
     }
 
