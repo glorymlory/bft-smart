@@ -148,6 +148,7 @@ public class PipelineManager {
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
 
         if(batchSize == maxBatchSize) {
+            logger.debug("Batch size is maxed out. Increasing allowed consensuses in exec by 1.");
             averageSuggestedAmountOfConsInPipeline+=1;
         }
 
