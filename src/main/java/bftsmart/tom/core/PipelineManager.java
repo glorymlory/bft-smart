@@ -12,6 +12,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class PipelineManager {
     // only for the leader
     private final int maxAllowedConsensusesInExec;
+    private final int maxWaitForNextConsensusTime;
     private final int reconfigurationTimerModeTime;
     private int currentMaxConsensusesInExec;
     private int waitForNextConsensusTime;
@@ -35,6 +36,7 @@ public class PipelineManager {
         this.currentMaxConsensusesInExec = maxConsensusesInExec;
         this.maxAllowedConsensusesInExec = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
+        this.maxWaitForNextConsensusTime = 80;
         reconfigurationTimerModeTime = 200; // 200 ms
         this.lastConsensusId.set(-1);
         this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit*1048576);
@@ -149,13 +151,17 @@ public class PipelineManager {
             averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExec;
         }
 
-        if (averageSuggestedAmountOfConsInPipeline != currentMaxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 0) {
+        if (averageSuggestedAmountOfConsInPipeline != currentMaxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 1) {
             currentMaxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
             int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) currentMaxConsensusesInExec);
-            waitForNextConsensusTime = newWaitForNextConsensusTime;
+            if(newWaitForNextConsensusTime > 0 && newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
+                waitForNextConsensusTime = newWaitForNextConsensusTime;
+            } else {
+                waitForNextConsensusTime = maxWaitForNextConsensusTime;
+            }
         }
 
-        if (averageSuggestedAmountOfConsInPipeline == 0) { // should not be the cast at all.
+        if (averageSuggestedAmountOfConsInPipeline == 0 || averageSuggestedAmountOfConsInPipeline==1) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             currentMaxConsensusesInExec = 1;
             waitForNextConsensusTime = 0;
