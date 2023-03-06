@@ -59,7 +59,7 @@ public class PipelineManager {
         return this.consensusesInExecution;
     }
 
-    public boolean isAllowedToAddToConsensusInExecList() {
+    public boolean isAllowedToProcessConsensus() {
         return this.consensusesInExecution.size() < maxAllowedConsensusesInExecFixed;
     }
 
@@ -68,7 +68,7 @@ public class PipelineManager {
     }
 
     public void addToConsensusInExecList(int cid) {
-        if (!this.consensusesInExecution.contains(cid) && isAllowedToAddToConsensusInExecList()) {
+        if (!this.consensusesInExecution.contains(cid) && isAllowedToProcessConsensus()) {
             this.consensusesInExecution.add(cid);
             timestamp_LastConsensusStarted = System.nanoTime();
             logger.info("Adding to consensusesInExecution value " + (cid));
@@ -172,7 +172,7 @@ public class PipelineManager {
 
         logger.debug("=======Updating pipeline configuration=======");
         logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
-        logger.debug("New maxConsensusesInExec: {}", maxAllowedConsensusesInExecFixed);
+        logger.debug("New maxConsensusesInExec: {}", maxConsToStartInParallel);
         logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         this.suggestedAmountOfConsInPipelineList.clear();
         this.latencyList.clear();

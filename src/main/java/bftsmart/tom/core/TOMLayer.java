@@ -317,7 +317,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         }
         this.inExecution = inEx;
 //        TODO check if we need here IsRetrievingState -> might lead us to a wrong waiting time after we had max elements in a list
-        if (pipelineManager.isAllowedToAddToConsensusInExecList() && !isRetrievingState()) {
+        if (pipelineManager.isAllowedToProcessConsensus() && !isRetrievingState()) {
             canPropose.signalAll();
         }
         proposeLock.unlock();
@@ -328,7 +328,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         logger.debug("Removing inExec value : " + this.inExecution + " to " + -1);
         if (inExToRemove != -1) this.pipelineManager.removeFromConsensusInExecList(inExToRemove);
         this.inExecution = -1;
-        if (pipelineManager.isAllowedToAddToConsensusInExecList() && !isRetrievingState()) {
+        if (pipelineManager.isAllowedToProcessConsensus() && !isRetrievingState()) {
             canPropose.signalAll();
         }
         proposeLock.unlock();
