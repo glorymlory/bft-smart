@@ -109,7 +109,7 @@ public final class DeliveryThread extends Thread {
         if (dec.getConsensusId() > tomLayer.getLastExec() + 1) {
             logger.debug("Last finished consensus: {}, received DECIDED consensus to deliver: {}", tomLayer.getLastExec(), dec.getConsensusId());
             logger.info("Could not insert decision into decided queue, because value {} is out of sequence. Adding to out of sequence values for delivery", dec.getConsensusId());
-            logger.debug("Current out of sequence values for delivery: {}", outOfSequenceValuesForDelivery);
+            logger.debug("Current out of sequence values for delivery: {}", outOfSequenceValuesForDelivery.stream().toArray());
             outOfSequenceValuesForDelivery.add(dec);
         } else {
             try {
