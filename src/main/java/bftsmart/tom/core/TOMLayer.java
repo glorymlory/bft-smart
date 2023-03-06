@@ -473,6 +473,15 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
+            //            TODO add lockers
+            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
+                logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
+                setDelayBeforeConsStartInPipeline();
+                logger.debug("Continue ...");
+            }
+
+            if (!doWork) break;
+
             // blocks until the current consensus finishes
             proposeLock.lock();
             pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForMaxOrGivenBatch(), this.controller.getCurrentViewOtherAcceptors().length);
@@ -515,12 +524,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //            }
 //            proposePipelineLock.unlock();
 
-//            TODO add lockers
-            if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
-                logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
-                setDelayBeforeConsStartInPipeline();
-                logger.debug("Continue ...");
-            }
 
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
