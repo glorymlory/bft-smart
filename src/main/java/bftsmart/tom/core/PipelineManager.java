@@ -125,9 +125,9 @@ public class PipelineManager {
             highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
             if(highLoadSuggestedAmountOfConsInPipeline <= maxConsToStartInParallel){
                 highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel + 1;
-                suggestedDelay = 5;
+                suggestedDelay = 0;
             }
-            if(highLoadSuggestedAmountOfConsInPipeline > 10){
+            if(highLoadSuggestedAmountOfConsInPipeline >= 10){
                 highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel;
                 suggestedDelay = 20;
             }
