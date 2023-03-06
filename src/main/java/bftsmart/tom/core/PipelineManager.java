@@ -11,10 +11,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public class PipelineManager {
     // only for the leader
-    private final int maxAllowedConsensusesInExec;
+    private final int maxAllowedConsensusesInExecFixed;
     private final int maxWaitForNextConsensusTime;
     private final int reconfigurationTimerModeTime;
-    private int currentMaxConsensusesInExec;
+    private int maxConsToStartInParallel;
     private int waitForNextConsensusTime;
 
     private AtomicLong lastConsensusId = new AtomicLong();
@@ -31,10 +31,11 @@ public class PipelineManager {
     private List<Integer> reconfigurationReplicasToBeAdded = new ArrayList<>();
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
+    private boolean adaptivePipelineShoudlBeIncreased = false;
 
     public PipelineManager(int maxConsensusesInExec, int waitForNextConsensusTime, int bandwidthMibit) {
-        this.currentMaxConsensusesInExec = maxConsensusesInExec;
-        this.maxAllowedConsensusesInExec = maxConsensusesInExec;
+        this.maxAllowedConsensusesInExecFixed = maxConsensusesInExec;
+        this.maxConsToStartInParallel = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
         this.maxWaitForNextConsensusTime = 60;
         reconfigurationTimerModeTime = 1200; // 200 ms
@@ -46,8 +47,8 @@ public class PipelineManager {
         return Math.max(waitForNextConsensusTime - (TimeUnit.MILLISECONDS.convert((System.nanoTime() - timestamp_LastConsensusStarted), TimeUnit.NANOSECONDS)), 0);
     }
 
-    public int getCurrentMaxConsensusesInExec() {
-        return currentMaxConsensusesInExec;
+    public int getMaxAllowedConsensusesInExecFixed() {
+        return maxAllowedConsensusesInExecFixed;
     }
 
     public boolean isDelayedBeforeNewConsensusStart() {
@@ -59,7 +60,11 @@ public class PipelineManager {
     }
 
     public boolean isAllowedToAddToConsensusInExecList() {
-        return this.consensusesInExecution.size() < currentMaxConsensusesInExec;
+        return this.consensusesInExecution.size() < maxAllowedConsensusesInExecFixed;
+    }
+
+    public boolean isAllowedToStartNewConsensus() {
+        return this.consensusesInExecution.size() < maxConsToStartInParallel;
     }
 
     public void addToConsensusInExecList(int cid) {
@@ -109,18 +114,9 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
         this.latencyList.add(latencyInMilliseconds);
 
-//        if(isConfigUpdatePaused()) {
-//            return;
-//        }
-
         if ((this.suggestedAmountOfConsInPipelineList.size() >= 1 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
             updatePipelineConfiguration(currentBatchSize, maxBatchSize);
         }
-    }
-
-    private boolean isConfigUpdatePaused() {
-        logger.debug("this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec: {}", this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec);
-        return this.currentMaxConsensusesInExec < this.maxAllowedConsensusesInExec && this.consensusesInExecution.size() >= this.currentMaxConsensusesInExec;
     }
 
     private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, long latencyInMilliseconds) {
@@ -129,7 +125,7 @@ public class PipelineManager {
 
         int newMaxConsInExec =  (int) Math.round(latencyInMilliseconds/transmissionTimeMs);
         logger.debug("Calculated max cons in exec: {}", newMaxConsInExec);
-        logger.debug("Current max cons in exec: {}", currentMaxConsensusesInExec);
+        logger.debug("Current max cons in exec: {}", maxConsToStartInParallel);
         return newMaxConsInExec;
     }
 
@@ -147,18 +143,19 @@ public class PipelineManager {
 
         logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
 
-        if(batchSize == maxBatchSize) {
+        if(adaptivePipelineShoudlBeIncreased) {
             logger.debug("Batch size is maxed out. Increasing allowed consensuses in exec by 1.");
             averageSuggestedAmountOfConsInPipeline+=1;
+            adaptivePipelineShoudlBeIncreased = false;
         }
 
-        if (averageSuggestedAmountOfConsInPipeline > maxAllowedConsensusesInExec) {
-            averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExec;
+        if (averageSuggestedAmountOfConsInPipeline > maxAllowedConsensusesInExecFixed) {
+            averageSuggestedAmountOfConsInPipeline = maxAllowedConsensusesInExecFixed;
         }
 
-        if (averageSuggestedAmountOfConsInPipeline != currentMaxConsensusesInExec && averageSuggestedAmountOfConsInPipeline > 1) {
-            currentMaxConsensusesInExec = averageSuggestedAmountOfConsInPipeline;
-            int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) currentMaxConsensusesInExec);
+        if (averageSuggestedAmountOfConsInPipeline != maxConsToStartInParallel && averageSuggestedAmountOfConsInPipeline > 1) {
+            maxConsToStartInParallel = averageSuggestedAmountOfConsInPipeline;
+            int newWaitForNextConsensusTime = (int) Math.round((double) averageLatency / (double) maxConsToStartInParallel);
             if(newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
                 waitForNextConsensusTime = newWaitForNextConsensusTime;
             } else {
@@ -168,14 +165,14 @@ public class PipelineManager {
 
         else if (averageSuggestedAmountOfConsInPipeline == 0 || averageSuggestedAmountOfConsInPipeline==1) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
-            currentMaxConsensusesInExec = 1;
+            maxConsToStartInParallel = 1;
             waitForNextConsensusTime = 0;
         }
 
 
         logger.debug("=======Updating pipeline configuration=======");
         logger.debug("Current consensusesInExecution: {}", consensusesInExecution.toString());
-        logger.debug("New maxConsensusesInExec: {}", currentMaxConsensusesInExec);
+        logger.debug("New maxConsensusesInExec: {}", maxAllowedConsensusesInExecFixed);
         logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         this.suggestedAmountOfConsInPipelineList.clear();
         this.latencyList.clear();
@@ -192,7 +189,7 @@ public class PipelineManager {
     public void setPipelineInReconfigurationMode() {
         logger.debug("Waiting for new replica join: {}");
         isProcessingReconfiguration = true;
-        currentMaxConsensusesInExec = 1;
+        maxConsToStartInParallel = 1;
 
         validateReconfigurationModeStatus();
     }
@@ -223,5 +220,9 @@ public class PipelineManager {
         };
 
         timer.schedule(task, reconfigurationTimerModeTime);
+    }
+
+    public void setAdaptivePipelineShoudlBeIncreased(boolean b) {
+        this.adaptivePipelineShoudlBeIncreased = b;
     }
 }

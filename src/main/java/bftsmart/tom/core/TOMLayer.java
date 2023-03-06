@@ -428,6 +428,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.batchSize = numberOfMessages;
 
         logger.debug("Creating a PROPOSE with " + numberOfMessages + " msgs");
+        if(numberOfMessages == this.controller.getStaticConf().getMaxBatchSize()) {
+            pipelineManager.setAdaptivePipelineShoudlBeIncreased(true);
+        }
 
         return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures() == 1);
     }
@@ -458,7 +461,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until the current consensus finishes
             proposeLock.lock();
-            if (!pipelineManager.isAllowedToAddToConsensusInExecList()) { //there are already max amount of consensus running
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
                 logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
                 logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
                 canPropose.awaitUninterruptibly();
@@ -517,7 +520,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
-                    pipelineManager.isAllowedToAddToConsensusInExecList()) { //there is no consensus in execution
+                    pipelineManager.isAllowedToStartNewConsensus()) { //there is no consensus in execution
 
                 // Sets the current consensus
                 int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
