@@ -456,7 +456,7 @@ public class ServiceReplica {
         MessageFactory messageFactory = new MessageFactory(id);
 
         PipelineManager pipelineManager = new PipelineManager(SVController.getStaticConf().getMaxConsensusesInExec(),
-                SVController.getStaticConf().getDelayBeforeNewConsensusProposeInMillisec(),SVController.getStaticConf().getBandwidthMibit());
+                SVController.getStaticConf().getDelayBeforeNewConsensusProposeInMillisec(),SVController.getStaticConf().getBandwidthMibit(), SVController.getStaticConf().getMaxBatchSize());
 
         Acceptor acceptor = new Acceptor(cs, messageFactory, SVController);
         cs.setAcceptor(acceptor);

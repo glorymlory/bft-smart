@@ -17,7 +17,6 @@ package bftsmart.clientsmanagement;
 
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.Map.Entry;
 import java.util.concurrent.locks.ReentrantLock;
 import bftsmart.communication.ServerCommunicationSystem;
@@ -31,9 +30,8 @@ import java.security.NoSuchAlgorithmException;
 import java.security.Signature;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Enumeration;
 import java.util.List;
-import java.util.Random;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -236,6 +234,35 @@ public class ClientsManager {
         /******* END CLIENTS CRITICAL SECTION ******/
         clientsLock.unlock();
         return count;
+    }
+
+    public int getTotalMessageSizeForMaxOrGivenBatch() {
+        int size = 0;
+
+        clientsLock.lock();
+        /******* BEGIN CLIENTS CRITICAL SECTION ******/
+
+        Iterator<Entry<Integer, ClientData>> it = clientsData.entrySet().iterator();
+        int counter = 0;
+        while (it.hasNext() && counter < controller.getStaticConf().getMaxBatchSize()) {
+            ClientData clientData = it.next().getValue();
+
+            clientData.clientLock.lock();
+            RequestList reqs = clientData.getPendingRequests();
+            if (!reqs.isEmpty()) {
+                for(TOMMessage msg:reqs) {
+                    if(!msg.alreadyProposed) {
+                        size += msg.serializedMessage.length;
+                        counter++;
+                    }
+                }
+            }
+            clientData.clientLock.unlock();
+        }
+
+        /******* END CLIENTS CRITICAL SECTION ******/
+        clientsLock.unlock();
+        return size;
     }
 
     /**

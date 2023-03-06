@@ -125,6 +125,7 @@ public final class BatchBuilder {
 				useSignatures, messages, signatures);
 
 	}
+
 	public byte[] makeBatch(List<TOMMessage> msgs, int numNounces, long seed, long timestamp, boolean useSignatures) {
 
 		int numMsgs = msgs.size();

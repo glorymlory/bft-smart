@@ -429,7 +429,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         logger.debug("Creating a PROPOSE with " + numberOfMessages + " msgs");
         if(numberOfMessages == this.controller.getStaticConf().getMaxBatchSize()) {
-            pipelineManager.setAdaptivePipelineShoudlBeIncreased(true);
+            pipelineManager.setAdaptivePipelineShouldBeIncreased(true);
         }
 
         return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures() == 1);
@@ -459,19 +459,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
-            // blocks until the current consensus finishes
-            proposeLock.lock();
-            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
-                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
-                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
-                canPropose.awaitUninterruptibly();
-            }
-            proposeLock.unlock();
-
-            if (!doWork) break;
-
-            logger.info("I'm the leader.");
-
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
@@ -485,6 +472,22 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             messagesLock.unlock();
 
             if (!doWork) break;
+
+            // blocks until the current consensus finishes
+            proposeLock.lock();
+            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForMaxOrGivenBatch(), this.controller.getCurrentViewOtherAcceptors().length);
+
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
+                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
+                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
+                canPropose.awaitUninterruptibly();
+            }
+            proposeLock.unlock();
+
+            if (!doWork) break;
+
+            logger.info("I'm the leader.");
+
 
             logger.debug("There are requests to be ordered. I will propose.");
 
@@ -512,6 +515,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //            }
 //            proposePipelineLock.unlock();
 
+//            TODO add lockers
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
                 logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
                 setDelayBeforeConsStartInPipeline();
