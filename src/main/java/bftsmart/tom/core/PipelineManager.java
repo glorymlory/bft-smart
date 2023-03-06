@@ -125,8 +125,12 @@ public class PipelineManager {
             highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
             if(highLoadSuggestedAmountOfConsInPipeline <= maxConsToStartInParallel){
                 highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel + 1;
+                suggestedDelay = 5;
             }
-            suggestedDelay = 10;
+            if(highLoadSuggestedAmountOfConsInPipeline > 10){
+                highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel;
+                suggestedDelay = 20;
+            }
             logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
         }
 
