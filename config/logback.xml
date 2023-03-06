@@ -53,6 +53,8 @@
     <logger name="bftsmart.tom.core.PipelineManager" level="TRACE"></logger>
     <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
     <logger name="bftsmart.tom.ServiceReplica" level="TRACE"></logger>
+    <logger name="bftsmart.consensus.Consensus" level="TRACE"></logger>
+    <logger name="bftsmart.consensus.Decision" level="TRACE"></logger>
 <!--    <logger name="bftsmart.reconfiguration.*" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.statemanagement.*" level="TRACE"></logger>-->
     <logger name="bftsmart.clientsmanagement.ClientsManager" level="TRACE"></logger>

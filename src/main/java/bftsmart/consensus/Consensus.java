@@ -309,6 +309,7 @@ public class Consensus {
      * @param deliver Set to true to deliver decision to TOMLayer/DeliveryThread
      */
     public void decided(Epoch epoch, boolean deliver) {
+        logger.debug("Consensus " + getId() + " decided : " + !decided);
         if (!decided) {
             decided = true;
             decisionEpoch = epoch.getTimestamp();
