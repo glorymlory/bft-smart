@@ -136,15 +136,14 @@ public class PipelineManager {
         int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(totalMessageSizeForMaxOrGivenBatch, amountOfReplicas, lastConsensusLatency);
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
 
-        if(countPendingRequests > maxBatchSize && consensusesInExecution.size() > maxConsToStartInParallel && maxConsToStartInParallel < 5) {
-            if(currentSuggestedAmountOfConsInPipeline==0) {
-                currentSuggestedAmountOfConsInPipeline = 3;
-            }
-            currentSuggestedAmountOfConsInPipeline += 1;
+        int highLoadSuggestedAmountOfConsInPipeline = 0;
+        if(countPendingRequests > (2*maxBatchSize) && consensusesInExecution.size() > maxConsToStartInParallel && maxConsToStartInParallel < 5) {
+            highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
+            logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
         }
 
         if (!isProcessingReconfiguration) {
-            updatePipelineConfiguration(currentSuggestedAmountOfConsInPipeline, lastConsensusLatency);
+            updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency);
         }
     }
 
