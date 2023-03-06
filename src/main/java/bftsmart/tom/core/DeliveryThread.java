@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.locks.Condition;
@@ -109,7 +110,9 @@ public final class DeliveryThread extends Thread {
         if (dec.getConsensusId() > tomLayer.getLastExec() + 1) {
             logger.debug("Last finished consensus: {}, received DECIDED consensus to deliver: {}", tomLayer.getLastExec(), dec.getConsensusId());
             logger.info("Could not insert decision into decided queue, because value {} is out of sequence. Adding to out of sequence values for delivery", dec.getConsensusId());
-            logger.debug("Current out of sequence values for delivery: {}", outOfSequenceValuesForDelivery.stream().toArray());
+            List<Decision> printOutOfSequenceValuesForDelivery = new ArrayList<>();
+            outOfSequenceValuesForDelivery.drainTo(printOutOfSequenceValuesForDelivery);
+            logger.debug("Current out of sequence values for delivery: {}", printOutOfSequenceValuesForDelivery.toString());
             outOfSequenceValuesForDelivery.add(dec);
         } else {
             try {
