@@ -97,7 +97,7 @@ public class PipelineManager {
         this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
-    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messagesSizeInBytes, int currentBatchSize, int maxBatchSize,  int amountOfReplicas) {
+    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messagesSizeInBytes,  int amountOfReplicas) {
         logger.debug("Message size in bytes: {}", messagesSizeInBytes);
         logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
         logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
@@ -115,7 +115,7 @@ public class PipelineManager {
         this.latencyList.add(latencyInMilliseconds);
 
         if ((this.suggestedAmountOfConsInPipelineList.size() >= 1 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
-            updatePipelineConfiguration(currentBatchSize, maxBatchSize);
+            updatePipelineConfiguration();
         }
     }
 
@@ -137,7 +137,7 @@ public class PipelineManager {
         return transmissionTimeSeconds*2; // Multiply by 2 to account for both propose and write
     }
 
-    private void updatePipelineConfiguration(int batchSize, int maxBatchSize) {
+    private void updatePipelineConfiguration() {
         int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
         long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
 
