@@ -100,26 +100,8 @@ public class PipelineManager {
     }
 
     public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messagesSizeInBytes,  int amountOfReplicas) {
-        logger.debug("Message size in bytes: {}", messagesSizeInBytes);
-        logger.debug("bandwidthInBit: {}bit/s", bandwidthInBit);
-        logger.debug("latencyInNanoseconds: {}", writeLatencyInNanoseconds);
-
         long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
-
-        if (messagesSizeInBytes <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || latencyInMilliseconds <= 0L) {
-            logger.debug("Message size, bandwidth or latency is not set or extremely small. Skipping pipeline configuration update.");
-            return;
-        }
-
-        int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(messagesSizeInBytes, amountOfReplicas, latencyInMilliseconds);
-
-        this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
-        this.latencyList.add(latencyInMilliseconds);
         lastConsensusLatency = (int) latencyInMilliseconds;
-
-//        if ((this.suggestedAmountOfConsInPipelineList.size() >= 1 || currentSuggestedAmountOfConsInPipeline==0) && !isProcessingReconfiguration) {
-//            updatePipelineConfiguration();
-//        }
     }
 
     public void decideOnMaxAmountOfConsensuses(int countPendingRequests, int totalMessageSizeForMaxOrGivenBatch, int amountOfReplicas) {
@@ -141,6 +123,9 @@ public class PipelineManager {
 
         if(countPendingRequests > (2*maxBatchSize)) {
             highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
+            if(highLoadSuggestedAmountOfConsInPipeline <= maxConsToStartInParallel){
+                highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel + 1;
+            }
             suggestedDelay = 10;
             logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
         }
@@ -170,10 +155,6 @@ public class PipelineManager {
     }
 
     private void updatePipelineConfiguration(int newMaxConsInExec, int latency, int suggestedDelay) {
-//        int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
-//        long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
-//        logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
-
         if (newMaxConsInExec > maxAllowedConsensusesInExecFixed) {
             newMaxConsInExec = maxAllowedConsensusesInExecFixed;
         }
