@@ -569,10 +569,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         this.pipelineManager.validateReconfigurationModeStatus();
 
         /* Adaptive pipeline code */
-        if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+        if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId() && dec.getDecisionEpoch().propValue !=null && this.controller.getCurrentViewOtherAcceptors() !=null) {
             long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
             long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
             long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
+            logger.debug("writeStageLatency: {}, acceptSageLatency: {}, writeAndAcceptLatency: {}", writeStageLatency, acceptSageLatency, writeAndAcceptLatency);
+            logger.debug("dec.getDecisionEpoch().propValue.length: {}, this.controller.getCurrentViewOtherAcceptors().length: {}", dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
 
             pipelineManager.monitorPipelineLoad(writeStageLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
         }
