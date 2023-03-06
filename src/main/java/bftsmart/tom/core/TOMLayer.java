@@ -428,9 +428,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.batchSize = numberOfMessages;
 
         logger.debug("Creating a PROPOSE with " + numberOfMessages + " msgs");
-        if(numberOfMessages == this.controller.getStaticConf().getMaxBatchSize()) {
-            pipelineManager.setAdaptivePipelineShouldBeIncreased(true);
-        }
 
         return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures() == 1);
     }
@@ -583,7 +580,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("writeStageLatency: {}, acceptSageLatency: {}, writeAndAcceptLatency: {}", writeStageLatency, acceptSageLatency, writeAndAcceptLatency);
             logger.debug("dec.getDecisionEpoch().propValue.length: {}, this.controller.getCurrentViewOtherAcceptors().length: {}", dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
 
-            pipelineManager.monitorPipelineLoad(writeStageLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+            pipelineManager.monitorPipelineLoad(writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
         }
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread

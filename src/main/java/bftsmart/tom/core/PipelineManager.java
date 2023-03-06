@@ -26,7 +26,6 @@ public class PipelineManager {
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
     private List<Long> latencyList = new ArrayList<>();
     private int lastConsensusLatency = 0;
-    private boolean adaptivePipelineShouldBeIncreased = false;
 
     private boolean isProcessingReconfiguration = false;
     private boolean isReconfigurationTimerStarted = false;
@@ -41,7 +40,7 @@ public class PipelineManager {
         this.maxBatchSize = maxBatchSize;
         this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit*1048576);
 
-        this.maxWaitForNextConsensusTime = 60;
+        this.maxWaitForNextConsensusTime = 40;
         this.reconfigurationTimerModeTime = 1200; // 200 ms
         this.lastConsensusId.set(-1);
     }
@@ -137,6 +136,13 @@ public class PipelineManager {
         int currentSuggestedAmountOfConsInPipeline = calculateNewAmountOfConsInPipeline(totalMessageSizeForMaxOrGivenBatch, amountOfReplicas, lastConsensusLatency);
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
 
+        if(countPendingRequests > maxBatchSize && consensusesInExecution.size() > maxConsToStartInParallel && maxConsToStartInParallel < 5) {
+            if(currentSuggestedAmountOfConsInPipeline==0) {
+                currentSuggestedAmountOfConsInPipeline = 3;
+            }
+            currentSuggestedAmountOfConsInPipeline += 1;
+        }
+
         if (!isProcessingReconfiguration) {
             updatePipelineConfiguration(currentSuggestedAmountOfConsInPipeline, lastConsensusLatency);
         }
@@ -147,6 +153,7 @@ public class PipelineManager {
         logger.debug("Total time with propose and write transmission: {} ms", transmissionTimeMs);
 
         int newMaxConsInExec =  (int) Math.round(latencyInMilliseconds/transmissionTimeMs);
+
         logger.debug("Calculated max cons in exec: {}", newMaxConsInExec);
         logger.debug("Current max cons in exec: {}", maxConsToStartInParallel);
         return newMaxConsInExec;
@@ -157,7 +164,7 @@ public class PipelineManager {
         double transmissionTimeSeconds = packetSizeBits / dataRateBits; // Calculate transmission time in seconds
         transmissionTimeSeconds = transmissionTimeSeconds * 1000; // Convert transmission time from seconds to milliseconds
         transmissionTimeSeconds = transmissionTimeSeconds * amountOfReplicas; // Multiply by amount of replicas
-        return transmissionTimeSeconds*2; // Multiply by 2 to account for both propose and write
+        return transmissionTimeSeconds; // Multiply by 2 to account for both propose and write
     }
 
     private void updatePipelineConfiguration(int newMaxConsInExec, int latency) {
@@ -165,17 +172,11 @@ public class PipelineManager {
 //        long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
 //        logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
 
-        if(adaptivePipelineShouldBeIncreased) {
-            logger.debug("Batch size is maxed out. Increasing allowed consensuses in exec by 1.");
-            newMaxConsInExec+=1;
-            adaptivePipelineShouldBeIncreased = false;
-        }
-
         if (newMaxConsInExec > maxAllowedConsensusesInExecFixed) {
             newMaxConsInExec = maxAllowedConsensusesInExecFixed;
         }
 
-        if (newMaxConsInExec != maxConsToStartInParallel && newMaxConsInExec > 1) {
+        if (newMaxConsInExec != maxConsToStartInParallel && newMaxConsInExec >= 1) {
             maxConsToStartInParallel = newMaxConsInExec;
             int newWaitForNextConsensusTime = (int) Math.round((double) latency / (double) maxConsToStartInParallel);
             if(newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
@@ -185,10 +186,10 @@ public class PipelineManager {
             }
         }
 
-        else if (newMaxConsInExec == 0 || newMaxConsInExec==1) { // should not be the cast at all.
+        else if (newMaxConsInExec == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
-            maxConsToStartInParallel = 1;
-            waitForNextConsensusTime = 0;
+            maxConsToStartInParallel = 3;
+            waitForNextConsensusTime = 20;
         }
 
         logger.debug("=======Updating pipeline configuration=======");
@@ -241,9 +242,5 @@ public class PipelineManager {
         };
 
         timer.schedule(task, reconfigurationTimerModeTime);
-    }
-
-    public void setAdaptivePipelineShouldBeIncreased(boolean b) {
-        this.adaptivePipelineShouldBeIncreased = b;
     }
 }
