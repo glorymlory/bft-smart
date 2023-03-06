@@ -137,13 +137,16 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
 
         int highLoadSuggestedAmountOfConsInPipeline = 0;
+        int suggestedDelay = 0;
+
         if(countPendingRequests > (2*maxBatchSize) &&  maxConsToStartInParallel <= 5) {
             highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
+            suggestedDelay = 10;
             logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
         }
 
         if (!isProcessingReconfiguration) {
-            updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency);
+            updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency, suggestedDelay);
         }
     }
 
@@ -166,7 +169,7 @@ public class PipelineManager {
         return transmissionTimeSeconds; // Multiply by 2 to account for both propose and write
     }
 
-    private void updatePipelineConfiguration(int newMaxConsInExec, int latency) {
+    private void updatePipelineConfiguration(int newMaxConsInExec, int latency, int suggestedDelay) {
 //        int averageSuggestedAmountOfConsInPipeline = (int) Math.round(this.suggestedAmountOfConsInPipelineList.stream().mapToInt(a -> a).average().getAsDouble());
 //        long averageLatency = (int) Math.round(this.latencyList.stream().mapToDouble(a -> a).average().getAsDouble());
 //        logger.debug("Calculated averageSuggestedAmountOfConsInPipeline: {}", averageSuggestedAmountOfConsInPipeline);
@@ -183,9 +186,11 @@ public class PipelineManager {
             } else {
                 waitForNextConsensusTime = maxWaitForNextConsensusTime;
             }
-        }
 
-        else if (newMaxConsInExec == 0) { // should not be the cast at all.
+            if(suggestedDelay>0){
+                waitForNextConsensusTime = suggestedDelay;
+            }
+        } else if (newMaxConsInExec == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             maxConsToStartInParallel = 3;
             waitForNextConsensusTime = 20;
