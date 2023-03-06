@@ -137,7 +137,7 @@ public class PipelineManager {
         this.suggestedAmountOfConsInPipelineList.add(currentSuggestedAmountOfConsInPipeline);
 
         int highLoadSuggestedAmountOfConsInPipeline = 0;
-        if(countPendingRequests > (2*maxBatchSize) && consensusesInExecution.size() > maxConsToStartInParallel && maxConsToStartInParallel < 5) {
+        if(countPendingRequests > (2*maxBatchSize) &&  maxConsToStartInParallel <= 5) {
             highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
             logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
         }
