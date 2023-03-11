@@ -199,8 +199,7 @@ public class PipelineManager {
 
         if (newMaxConsInExec != maxConsToStartInParallel && newMaxConsInExec >= 1) {
             maxConsToStartInParallel = newMaxConsInExec;
-            int newWaitForNextConsensusTime = getNewWaitForNextConsensusTime(newMaxConsInExec, (double) latency, suggestedDelay);
-            waitForNextConsensusTime = newWaitForNextConsensusTime;
+            waitForNextConsensusTime = getNewWaitForNextConsensusTime(newMaxConsInExec, (double) latency, suggestedDelay);
         }
 
         if (newMaxConsInExec == 0) { // should not be the cast at all.
@@ -219,16 +218,14 @@ public class PipelineManager {
 
     private int getNewWaitForNextConsensusTime(int newMaxConsInExec, double latency, int suggestedDelay) {
         int newWaitForNextConsensusTime = (int) Math.round(latency / (double) maxConsToStartInParallel);
-        if (newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
-            waitForNextConsensusTime = newWaitForNextConsensusTime;
-        } else {
-            waitForNextConsensusTime = maxWaitForNextConsensusTime;
+        if (newWaitForNextConsensusTime > maxWaitForNextConsensusTime) {
+            newWaitForNextConsensusTime = maxWaitForNextConsensusTime;
         }
 
         if (suggestedDelay > 0) {
-            waitForNextConsensusTime = suggestedDelay;
-        } else if(newMaxConsInExec ==1 && waitForNextConsensusTime>0){
-            waitForNextConsensusTime = 0;
+            newWaitForNextConsensusTime = suggestedDelay;
+        } else if(newMaxConsInExec ==1 && newWaitForNextConsensusTime>0){
+            newWaitForNextConsensusTime = 0;
         } else if(newMaxConsInExec <=3) {
 //TODO we can decide on max delay based on experiments
         } else if(newMaxConsInExec <=5) {
