@@ -219,7 +219,7 @@ public class ServersCommunicationLayer extends Thread {
     //******* EDUARDO BEGIN **************//
     public void updateConnections() {
         connectionsLock.lock();
-
+        logger.debug("Here we are");
         if (this.controller.isInCurrentView()) {
 
             Iterator<Integer> it = this.connections.keySet().iterator();

@@ -1,19 +1,18 @@
 package bftsmart.tom.core;
 
+import bftsmart.statemanagement.SMMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class PipelineManager {
     // only for the leader
     private final int maxAllowedConsensusesInExecFixed;
     private final int maxWaitForNextConsensusTime;
-    private final int reconfigurationTimerModeTime;
 
     private int maxConsToStartInParallel;
     private int waitForNextConsensusTime;
@@ -22,19 +21,17 @@ public class PipelineManager {
     private Long timestamp_LastConsensusStarted = 0L;
 
     private BigDecimal bandwidthInBit;
-    private int maxBatchSize = 0;
-
+    private int maxBatchSize;
 
     //    TODO remove
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
     private List<Long> latencyList = new ArrayList<>();
-    private Map<Long, Double> currentInExecConsBatchSizeList = new HashMap();
+    private Map<Long, Double> currentInExecConsBatchSizeList = new ConcurrentHashMap();
 
     private int lastConsensusLatency = 0;
 
-    private boolean isProcessingReconfiguration = false;
-    private boolean isReconfigurationTimerStarted = false;
-    private List<Integer> reconfigurationReplicasToBeAdded = new ArrayList<>();
+    private boolean isReconfigurationMode = false;
+    private BlockingQueue<SMMessage> reconfigurationSMMessagesQueue;
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -45,8 +42,9 @@ public class PipelineManager {
         this.maxBatchSize = maxBatchSize;
         this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit * 1048576);
 
+        reconfigurationSMMessagesQueue = new LinkedBlockingQueue<>();
+
         this.maxWaitForNextConsensusTime = 40;
-        this.reconfigurationTimerModeTime = 1200; // 200 ms
         this.lastConsensusId.set(-1);
     }
 
@@ -143,7 +141,7 @@ public class PipelineManager {
             logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
         }
 
-        if (!isProcessingReconfiguration) {
+        if (!isReconfigurationMode) {
             updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency, suggestedDelay);
         }
     }
@@ -224,11 +222,11 @@ public class PipelineManager {
 
         if (suggestedDelay > 0) {
             newWaitForNextConsensusTime = suggestedDelay;
-        } else if(newMaxConsInExec ==1 && newWaitForNextConsensusTime>0){
+        } else if (newMaxConsInExec == 1 && newWaitForNextConsensusTime > 0) {
             newWaitForNextConsensusTime = 0;
-        } else if(newMaxConsInExec <=3) {
+        } else if (newMaxConsInExec <= 3) {
 //TODO we can decide on max delay based on experiments
-        } else if(newMaxConsInExec <=5) {
+        } else if (newMaxConsInExec <= 5) {
 //TODO we can decide on max delay based on experiments
         }
         return newWaitForNextConsensusTime;
@@ -243,38 +241,35 @@ public class PipelineManager {
     }
 
     public void setPipelineInReconfigurationMode() {
-        logger.debug("Waiting for new replica join: {}");
-        isProcessingReconfiguration = true;
+        logger.debug("Reconfiguration mode for pipeline started");
+        isReconfigurationMode = true;
         maxConsToStartInParallel = 1;
-
-        validateReconfigurationModeStatus();
     }
 
-    public void validateReconfigurationModeStatus() {
-        if (isProcessingReconfiguration && !isReconfigurationTimerStarted && consensusesInExecution.size() <= 1) {
-            isReconfigurationTimerStarted = true;
-            setReconfigurationTimer();
+    public boolean isAllowedToRunReconfiguration(int cid) {
+        SMMessage smMessage = reconfigurationSMMessagesQueue.peek();
+        if (isReconfigurationMode && smMessage != null && consensusesInExecution.size() <= 1
+                && (smMessage.getCID() + maxAllowedConsensusesInExecFixed) <= cid) {
+            return true;
         }
+        return false;
+    }
+
+    public SMMessage getSMMessageToReconfigure() {
+        return reconfigurationSMMessagesQueue.poll();
     }
 
     public void setPipelineOutOfReconfigurationMode() {
-        logger.debug("Reconfiguration mode for pipeline finished. New replicas: {}", reconfigurationReplicasToBeAdded.toString());
-        isProcessingReconfiguration = false;
-        isReconfigurationTimerStarted = false;
-        reconfigurationReplicasToBeAdded.clear();
+        logger.debug("Reconfiguration mode for pipeline finished");
+        isReconfigurationMode = false;
     }
 
-    public void setReconfigurationTimer() {
-        Timer timer = new Timer();
-        TimerTask task = new TimerTask() {
-            @Override
-            public void run() {
-                if (consensusesInExecution.size() <= 1) {
-                    setPipelineOutOfReconfigurationMode();
-                }
-            }
-        };
+    public boolean isReconfigurationMode() {
+        return isReconfigurationMode;
+    }
 
-        timer.schedule(task, reconfigurationTimerModeTime);
+    public void scheduleReplicaReconfiguration(SMMessage smsg) {
+        logger.debug("adding SMMessage : {}", smsg.getCID());
+        reconfigurationSMMessagesQueue.add(smsg);
     }
 }

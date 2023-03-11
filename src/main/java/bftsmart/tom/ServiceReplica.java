@@ -174,6 +174,7 @@ public class ServiceReplica {
     }
 
     public void joinMsgReceived(VMMessage msg) {
+        logger.debug("JOINING MESSAGE");
         ReconfigureReply r = msg.getReply();
 
         if (r.getView().isMember(id)) {

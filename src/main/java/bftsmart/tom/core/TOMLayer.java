@@ -25,6 +25,7 @@ import bftsmart.consensus.Decision;
 import bftsmart.consensus.Epoch;
 import bftsmart.consensus.roles.Acceptor;
 import bftsmart.reconfiguration.ServerViewController;
+import bftsmart.statemanagement.SMMessage;
 import bftsmart.statemanagement.StateManager;
 import bftsmart.tom.ServiceReplica;
 import bftsmart.tom.core.messages.ForwardedMessage;
@@ -570,20 +571,26 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         dec.setRegency(syncher.getLCManager().getLastReg());
         dec.setLeader(execManager.getCurrentLeader());
 
-        this.pipelineManager.validateReconfigurationModeStatus();
+        this.dt.delivery(dec); // Sends the decision to the delivery thread
 
-        /* Adaptive pipeline code */
-        if (dec.firstMessageProposed != null && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId() && dec.getDecisionEpoch().propValue !=null && this.controller.getCurrentViewOtherAcceptors() !=null) {
-            long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
-            long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
-            long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
-            logger.debug("writeStageLatency: {}, acceptSageLatency: {}, writeAndAcceptLatency: {}", writeStageLatency, acceptSageLatency, writeAndAcceptLatency);
-            logger.debug("dec.getDecisionEpoch().propValue.length: {}, this.controller.getCurrentViewOtherAcceptors().length: {}", dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
-
-            pipelineManager.collectConsensusPerformanceData(dec.getConsensusId(), writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+        if(pipelineManager.isAllowedToRunReconfiguration(dec.getConsensusId())) {
+            SMMessage smMessage = pipelineManager.getSMMessageToReconfigure();
+            getStateManager().currentConsensusIdAsked(smMessage.getSender(), smMessage.getCID());
+            pipelineManager.setPipelineOutOfReconfigurationMode();
         }
 
-        this.dt.delivery(dec); // Sends the decision to the delivery thread
+        /* Adaptive pipeline code */
+        if (execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+            if(dec.firstMessageProposed != null && dec.getDecisionEpoch().propValue !=null && this.controller.getCurrentViewOtherAcceptors() !=null) {
+                long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
+                long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
+                long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
+                logger.debug("writeStageLatency: {}, acceptSageLatency: {}, writeAndAcceptLatency: {}", writeStageLatency, acceptSageLatency, writeAndAcceptLatency);
+                logger.debug("dec.getDecisionEpoch().propValue.length: {}, this.controller.getCurrentViewOtherAcceptors().length: {}", dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+
+                pipelineManager.collectConsensusPerformanceData(dec.getConsensusId(), writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+            }
+        }
     }
 
     /**

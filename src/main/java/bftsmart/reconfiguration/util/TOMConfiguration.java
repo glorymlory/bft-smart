@@ -415,14 +415,14 @@ public class TOMConfiguration extends Configuration {
 
             s = (String) configs.remove("system.pipeline.maxConsensusesInExec");
             if (s == null) {
-                maxConsensusesInExec = 3;
+                maxConsensusesInExec = 10;
             } else {
                 maxConsensusesInExec = Integer.parseInt(s);
             }
 
             s = (String) configs.remove("system.pipeline.delayBeforeNewConsensusProposeInMillisec");
             if (s == null) {
-                delayBeforeNewConsensusProposeInMillisec = 100;
+                delayBeforeNewConsensusProposeInMillisec = 20;
             } else {
                 delayBeforeNewConsensusProposeInMillisec = Integer.parseInt(s);
             }

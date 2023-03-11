@@ -114,9 +114,21 @@ public class MessageHandler {
 						tomLayer.getStateManager().SMReplyDeliver(smsg, tomLayer.controller.getStaticConf().isBFT());
 						break;
 					case TOMUtil.SM_ASK_INITIAL:
-						tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
+						logger.debug("ASK INITIAL: {}", smsg.getCID());
+						if(tomLayer.pipelineManager.isReconfigurationMode()) {
+							if (tomLayer.pipelineManager.getConsensusesInExecution().isEmpty()) {
+								tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
+								tomLayer.pipelineManager.setPipelineOutOfReconfigurationMode();
+							} else {
+								logger.debug("We received ASK INITIAL cid and scheduled a reconfiguration mode.");
+								tomLayer.pipelineManager.scheduleReplicaReconfiguration(smsg);
+							}
+						} else {
+							tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
+						}
 						break;
 					case TOMUtil.SM_REPLY_INITIAL:
+						logger.debug("REPLY INITIAL : {}",smsg.getCID() );
 						tomLayer.getStateManager().currentConsensusIdReceived(smsg);
 						break;
 					default:
