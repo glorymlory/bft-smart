@@ -316,14 +316,14 @@ public final class Acceptor {
 					logger.debug(
 							"Speculative ACCEPT message for consensus {} matches the written value, sending it to the other replicas",
 							cid);
-
+					logger.debug("accept size in bytes : {}", cm.getValue().length);
 					communication.getServersConn().send(targets, cm, true);
 
 				} else { // ... and if not, create the ACCEPT message again (with the correct value), and
 							// send it
 
 					ConsensusMessage correctAccept = factory.createAccept(cid, epoch.getTimestamp(), value);
-
+//					correctAccept.
 					proofExecutor.submit(() -> {
 
 						// Create a cryptographic proof for this ACCEPT message

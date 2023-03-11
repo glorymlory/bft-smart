@@ -23,8 +23,13 @@ public class PipelineManager {
 
     private BigDecimal bandwidthInBit;
     private int maxBatchSize = 0;
+
+
+    //    TODO remove
     private List<Integer> suggestedAmountOfConsInPipelineList = new ArrayList<>();
     private List<Long> latencyList = new ArrayList<>();
+    private Map<Long, Double> currentInExecConsBatchSizeList = new HashMap();
+
     private int lastConsensusLatency = 0;
 
     private boolean isProcessingReconfiguration = false;
@@ -38,7 +43,7 @@ public class PipelineManager {
         this.maxConsToStartInParallel = maxConsensusesInExec;
         this.waitForNextConsensusTime = waitForNextConsensusTime;
         this.maxBatchSize = maxBatchSize;
-        this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit*1048576);
+        this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit * 1048576);
 
         this.maxWaitForNextConsensusTime = 40;
         this.reconfigurationTimerModeTime = 1200; // 200 ms
@@ -99,18 +104,22 @@ public class PipelineManager {
         this.consensusesInExecution = ConcurrentHashMap.<Integer>newKeySet();
     }
 
-    public void monitorPipelineLoad(long writeLatencyInNanoseconds, long messagesSizeInBytes,  int amountOfReplicas) {
+    public void collectConsensusPerformanceData(long cid, long writeLatencyInNanoseconds, long messagesSizeInBytes, int amountOfReplicas) {
+        currentInExecConsBatchSizeList.remove(cid);
+
         long latencyInMilliseconds = TimeUnit.MILLISECONDS.convert(writeLatencyInNanoseconds, TimeUnit.NANOSECONDS);
         lastConsensusLatency = (int) latencyInMilliseconds;
+
     }
 
     public void decideOnMaxAmountOfConsensuses(int countPendingRequests, int totalMessageSizeForMaxOrGivenBatch, int amountOfReplicas) {
+        logger.debug("last cons started : {}", lastConsensusId.get());
         logger.debug("countPendingRequests: {}", countPendingRequests);
         logger.debug("bandwidthInBit: {} bit/s", bandwidthInBit);
         logger.debug("totalMessageSize: {} bytes", totalMessageSizeForMaxOrGivenBatch);
         logger.debug("avgLatency: {} ms", lastConsensusLatency);
 
-        if (lastConsensusLatency <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || countPendingRequests <= 0L || totalMessageSizeForMaxOrGivenBatch <= 0L) {
+        if (lastConsensusLatency <= 0L || bandwidthInBit.compareTo(BigDecimal.ZERO) == 0 || totalMessageSizeForMaxOrGivenBatch <= 0L) {
             logger.debug("Not enough information to decide on max amount of consensuses. Returning.");
             return;
         }
@@ -121,9 +130,9 @@ public class PipelineManager {
         int highLoadSuggestedAmountOfConsInPipeline = 0;
         int suggestedDelay = 0;
 
-        if(countPendingRequests > (maxBatchSize)) {
+        if (countPendingRequests > (maxBatchSize)) {
             highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
-            if(highLoadSuggestedAmountOfConsInPipeline <= consensusesInExecution.size()){
+            if (highLoadSuggestedAmountOfConsInPipeline <= consensusesInExecution.size()) {
                 highLoadSuggestedAmountOfConsInPipeline = consensusesInExecution.size() + 1;
                 suggestedDelay = 1;
             }
@@ -135,19 +144,44 @@ public class PipelineManager {
         }
 
         if (!isProcessingReconfiguration) {
-//            updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency, suggestedDelay);
+            updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency, suggestedDelay);
         }
     }
 
-    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, long latencyInMilliseconds) {
-        double transmissionTimeMs = calculateTransmissionTime(Math.toIntExact(messageSizeInBytes), bandwidthInBit.doubleValue(), amountOfReplicas);
-        logger.debug("Total time with propose and write transmission: {} ms", transmissionTimeMs);
+    private Integer calculateNewAmountOfConsInPipeline(long messageSizeInBytes, int amountOfReplicas, int latencyInMilliseconds) {
+        double transmissionTimeProposeMs = calculateTransmissionTime(Math.toIntExact(messageSizeInBytes), bandwidthInBit.doubleValue(), amountOfReplicas);
+        double transmissionTimeDeliveryMs = calculateTransmissionTime(Math.toIntExact(messageSizeInBytes), bandwidthInBit.doubleValue(), 1);
+        currentInExecConsBatchSizeList.put(lastConsensusId.get(), transmissionTimeDeliveryMs);
+        logger.debug("Total time for propose transmission: {} ms", transmissionTimeProposeMs);
+        logger.debug("Total time for delivery transmission: {} ms", transmissionTimeDeliveryMs);
 
-        int newMaxConsInExec =  (int) Math.round(latencyInMilliseconds/transmissionTimeMs);
+        int totalTimeAvailable = getAvailableTimeToRunNewConsensuses(latencyInMilliseconds);
+        logger.debug("Total time available to run new consensuses: {}", totalTimeAvailable);
+//        It means that we won`t be able to process more messages during the given latency,
+//        since the current messages delivery will consume all the available replica resources.
+//        Returning the current in execution size, so we dont start new consensuses.
+        if (totalTimeAvailable < 0) {
+            return this.consensusesInExecution.size();
+        }
+
+        int newMaxConsInExec = (int) Math.round(totalTimeAvailable / transmissionTimeProposeMs);
 
         logger.debug("Calculated max cons in exec: {}", newMaxConsInExec);
         logger.debug("Current max cons in exec: {}", maxConsToStartInParallel);
         return newMaxConsInExec;
+    }
+
+    private int getAvailableTimeToRunNewConsensuses(int latencyInMilliseconds) {
+        //        Count total transmission time to deliver each consensus that is in execution.
+        int totalTransmissionForPrevCons = 0;
+        for (Map.Entry<Long, Double> transmissionTime : currentInExecConsBatchSizeList.entrySet()) {
+            logger.debug("time for delivery transmission: {} ms", transmissionTime.getValue());
+            totalTransmissionForPrevCons += transmissionTime.getValue();
+        }
+        logger.debug("Total transmission needed to deliver in execution consensuses: {}", totalTransmissionForPrevCons);
+
+        int totalLatency = latencyInMilliseconds - totalTransmissionForPrevCons;
+        return totalLatency;
     }
 
     private static double calculateTransmissionTime(int packetSizeBytes, double dataRateBits, int amountOfReplicas) {
@@ -165,20 +199,14 @@ public class PipelineManager {
 
         if (newMaxConsInExec != maxConsToStartInParallel && newMaxConsInExec >= 1) {
             maxConsToStartInParallel = newMaxConsInExec;
-            int newWaitForNextConsensusTime = (int) Math.round((double) latency / (double) maxConsToStartInParallel);
-            if(newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
-                waitForNextConsensusTime = newWaitForNextConsensusTime;
-            } else {
-                waitForNextConsensusTime = maxWaitForNextConsensusTime;
-            }
+            int newWaitForNextConsensusTime = getNewWaitForNextConsensusTime(newMaxConsInExec, (double) latency, suggestedDelay);
+            waitForNextConsensusTime = newWaitForNextConsensusTime;
+        }
 
-            if(suggestedDelay>0){
-                waitForNextConsensusTime = suggestedDelay;
-            }
-        } else if (newMaxConsInExec == 0) { // should not be the cast at all.
+        if (newMaxConsInExec == 0) { // should not be the cast at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
-            maxConsToStartInParallel = 3;
-            waitForNextConsensusTime = 20;
+            maxConsToStartInParallel = 1;
+            waitForNextConsensusTime = 0;
         }
 
         logger.debug("=======Updating pipeline configuration=======");
@@ -187,6 +215,26 @@ public class PipelineManager {
         logger.debug("New waitForNextConsensusTime: {}ms", waitForNextConsensusTime);
         this.suggestedAmountOfConsInPipelineList.clear();
         this.latencyList.clear();
+    }
+
+    private int getNewWaitForNextConsensusTime(int newMaxConsInExec, double latency, int suggestedDelay) {
+        int newWaitForNextConsensusTime = (int) Math.round(latency / (double) maxConsToStartInParallel);
+        if (newWaitForNextConsensusTime < maxWaitForNextConsensusTime) {
+            waitForNextConsensusTime = newWaitForNextConsensusTime;
+        } else {
+            waitForNextConsensusTime = maxWaitForNextConsensusTime;
+        }
+
+        if (suggestedDelay > 0) {
+            waitForNextConsensusTime = suggestedDelay;
+        } else if(newMaxConsInExec ==1 && waitForNextConsensusTime>0){
+            waitForNextConsensusTime = 0;
+        } else if(newMaxConsInExec <=3) {
+//TODO we can decide on max delay based on experiments
+        } else if(newMaxConsInExec <=5) {
+//TODO we can decide on max delay based on experiments
+        }
+        return newWaitForNextConsensusTime;
     }
 
     public long getNewConsensusIdAndIncrement() {

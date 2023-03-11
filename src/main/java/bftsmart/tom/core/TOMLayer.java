@@ -456,12 +456,23 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
+            // blocks until the current consensus finishes
+            proposeLock.lock();
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
+                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
+                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
+                canPropose.awaitUninterruptibly();
+            }
+            proposeLock.unlock();
+
+            if (!doWork) break;
+            logger.info("I'm the leader.");
+
             // blocks until there are requests to be processed/ordered
             messagesLock.lock();
             if (!clientsManager.havePendingRequests() ||
                     (controller.getStaticConf().getBatchTimeout() > -1
                             && clientsManager.countPendingRequests() < controller.getStaticConf().getMaxBatchSize())) {
-
                 logger.debug("Waiting for enough requests");
                 haveMessages.awaitUninterruptibly();
                 logger.debug("Got enough requests");
@@ -469,6 +480,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             messagesLock.unlock();
 
             if (!doWork) break;
+
+            logger.debug("There are requests to be ordered. I will propose.");
 
             //            TODO add lockers
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
@@ -478,24 +491,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             }
 
             if (!doWork) break;
-
-            // blocks until the current consensus finishes
-            proposeLock.lock();
-            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForMaxOrGivenBatch(), this.controller.getCurrentViewOtherAcceptors().length);
-
-            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
-                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
-                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
-                canPropose.awaitUninterruptibly();
-            }
-            proposeLock.unlock();
-
-            if (!doWork) break;
-
-            logger.info("I'm the leader.");
-
-
-            logger.debug("There are requests to be ordered. I will propose.");
 
 //            TODO make it work, and run tests if it makes any difference in performance
 //            proposePipelineLock.lock();
@@ -554,6 +549,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 }
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
+//                check replica id , and exit SYstem.exit();
+//                if(this.controller.getStaticConf().getProcessId()==0 && execId==1000) {
+//                    System.exit(100);
+//                }
+                pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }
@@ -580,7 +580,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             logger.debug("writeStageLatency: {}, acceptSageLatency: {}, writeAndAcceptLatency: {}", writeStageLatency, acceptSageLatency, writeAndAcceptLatency);
             logger.debug("dec.getDecisionEpoch().propValue.length: {}, this.controller.getCurrentViewOtherAcceptors().length: {}", dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
 
-            pipelineManager.monitorPipelineLoad(writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+            pipelineManager.collectConsensusPerformanceData(dec.getConsensusId(), writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
         }
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread

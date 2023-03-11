@@ -326,7 +326,6 @@ public final class DeliveryThread extends Thread {
                         CertifiedDecision cDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(),
                                 d.getConsensusId(), d.getValue(), d.getDecisionEpoch().proof);
                         cDecs[count] = cDec;
-
                         // cons.firstMessageProposed contains the performance counters
                         if (requests[count][0].equals(d.firstMessageProposed)) {
                             long time = requests[count][0].timestamp;
@@ -340,7 +339,6 @@ public final class DeliveryThread extends Thread {
 
                         count++;
                     }
-
                     Decision lastDecision = decisions.get(decisions.size() - 1);
 
                     deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);

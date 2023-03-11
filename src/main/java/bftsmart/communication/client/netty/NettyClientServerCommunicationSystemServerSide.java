@@ -322,6 +322,7 @@ public class NettyClientServerCommunicationSystemServerSide extends SimpleChanne
 			sm.serializedMessageSignature = signature;
 		}
 
+
 		for (int target : targets) {
 			try {
 				sm = (TOMMessage) sm.clone();

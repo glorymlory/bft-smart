@@ -236,7 +236,7 @@ public class ClientsManager {
         return count;
     }
 
-    public int getTotalMessageSizeForMaxOrGivenBatch() {
+    public int getTotalMessageSizeForPendingMsgs() {
         int size = 0;
 
         clientsLock.lock();
