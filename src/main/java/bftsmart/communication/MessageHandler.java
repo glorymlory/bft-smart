@@ -116,13 +116,8 @@ public class MessageHandler {
 					case TOMUtil.SM_ASK_INITIAL:
 						logger.debug("ASK INITIAL: {}", smsg.getCID());
 						if(tomLayer.pipelineManager.isReconfigurationMode()) {
-							if (tomLayer.pipelineManager.getConsensusesInExecution().isEmpty()) {
-								tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
-								tomLayer.pipelineManager.setPipelineOutOfReconfigurationMode();
-							} else {
 								logger.debug("We received ASK INITIAL cid and scheduled a reconfiguration mode.");
 								tomLayer.pipelineManager.scheduleReplicaReconfiguration(smsg);
-							}
 						} else {
 							tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
 						}

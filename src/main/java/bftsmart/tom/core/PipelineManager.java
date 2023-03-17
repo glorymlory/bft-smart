@@ -32,6 +32,7 @@ public class PipelineManager {
 
     private boolean isReconfigurationMode = false;
     private BlockingQueue<SMMessage> reconfigurationSMMessagesQueue;
+    private BlockingQueue<Integer> reconfigurationCIDsQueue;
 
     private final Logger logger = LoggerFactory.getLogger(this.getClass());
 
@@ -43,6 +44,7 @@ public class PipelineManager {
         this.bandwidthInBit = BigDecimal.valueOf(bandwidthMibit * 1048576);
 
         reconfigurationSMMessagesQueue = new LinkedBlockingQueue<>();
+        reconfigurationCIDsQueue = new LinkedBlockingQueue<>();
 
         this.maxWaitForNextConsensusTime = 40;
         this.lastConsensusId.set(-1);
@@ -240,16 +242,19 @@ public class PipelineManager {
         return this.lastConsensusId.get();
     }
 
-    public void setPipelineInReconfigurationMode() {
+    public void setPipelineInReconfigurationMode(int cid) {
         logger.debug("Reconfiguration mode for pipeline started");
         isReconfigurationMode = true;
         maxConsToStartInParallel = 1;
+        reconfigurationCIDsQueue.add(cid);
     }
 
-    public boolean isAllowedToRunReconfiguration(int cid) {
+    public boolean isAllowedToRunReconfiguration(int currentConsID) {
         SMMessage smMessage = reconfigurationSMMessagesQueue.peek();
-        if (isReconfigurationMode && smMessage != null && consensusesInExecution.size() <= 1
-                && (smMessage.getCID() + maxAllowedConsensusesInExecFixed) <= cid) {
+        int lastReconfigCid = reconfigurationCIDsQueue.peek();
+        if (isReconfigurationMode && smMessage != null
+                && (lastReconfigCid + maxAllowedConsensusesInExecFixed) == currentConsID) {
+            reconfigurationCIDsQueue.poll();
             return true;
         }
         return false;

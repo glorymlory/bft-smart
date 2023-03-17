@@ -119,7 +119,6 @@ public final class DeliveryThread extends Thread {
             try {
                 decidedLock.lock();
                 decided.put(dec);
-
                 // clean the ordered messages from the pending buffer
                 TOMMessage[] requests = extractMessagesFromDecision(dec);
                 tomLayer.clientsManager.requestsOrdered(requests);
@@ -145,7 +144,7 @@ public final class DeliveryThread extends Thread {
                 lastReconfig = dec.getConsensusId();
 
 //                TODO check we add a replica not remove it.
-                this.tomLayer.pipelineManager.setPipelineInReconfigurationMode();
+                this.tomLayer.pipelineManager.setPipelineInReconfigurationMode(lastReconfig);
             }
         }
     }
