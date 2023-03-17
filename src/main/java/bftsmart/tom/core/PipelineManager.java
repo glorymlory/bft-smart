@@ -153,35 +153,12 @@ public class PipelineManager {
         double transmissionTimeDeliveryMs = calculateTransmissionTime(Math.toIntExact(messageSizeInBytes), bandwidthInBit.doubleValue(), 1);
         currentInExecConsBatchSizeList.put(lastConsensusId.get(), transmissionTimeDeliveryMs);
         logger.debug("Total time for propose transmission: {} ms", transmissionTimeProposeMs);
-        logger.debug("Total time for delivery transmission: {} ms", transmissionTimeDeliveryMs);
 
-        int totalTimeAvailable = getAvailableTimeToRunNewConsensuses(latencyInMilliseconds);
-        logger.debug("Total time available to run new consensuses: {}", totalTimeAvailable);
-//        It means that we won`t be able to process more messages during the given latency,
-//        since the current messages delivery will consume all the available replica resources.
-//        Returning the current in execution size, so we dont start new consensuses.
-        if (totalTimeAvailable < 0) {
-            return this.consensusesInExecution.size();
-        }
-
-        int newMaxConsInExec = (int) Math.round(totalTimeAvailable / transmissionTimeProposeMs);
+        int newMaxConsInExec = (int) Math.round(latencyInMilliseconds / transmissionTimeProposeMs);
 
         logger.debug("Calculated max cons in exec: {}", newMaxConsInExec);
         logger.debug("Current max cons in exec: {}", maxConsToStartInParallel);
         return newMaxConsInExec;
-    }
-
-    private int getAvailableTimeToRunNewConsensuses(int latencyInMilliseconds) {
-        //        Count total transmission time to deliver each consensus that is in execution.
-        int totalTransmissionForPrevCons = 0;
-        for (Map.Entry<Long, Double> transmissionTime : currentInExecConsBatchSizeList.entrySet()) {
-            logger.debug("time for delivery transmission: {} ms", transmissionTime.getValue());
-            totalTransmissionForPrevCons += transmissionTime.getValue();
-        }
-        logger.debug("Total transmission needed to deliver in execution consensuses: {}", totalTransmissionForPrevCons);
-
-        int totalLatency = latencyInMilliseconds - totalTransmissionForPrevCons;
-        return totalLatency;
     }
 
     private static double calculateTransmissionTime(int packetSizeBytes, double dataRateBits, int amountOfReplicas) {
