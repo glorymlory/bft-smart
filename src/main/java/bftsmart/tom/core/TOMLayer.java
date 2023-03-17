@@ -518,6 +518,17 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //            proposePipelineLock.unlock();
 
 
+            proposeLock.lock();
+            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
+                logger.debug("");
+                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
+                canPropose.awaitUninterruptibly();
+            }
+            proposeLock.unlock();
+
+            if (!doWork) break;
+
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     pipelineManager.isAllowedToStartNewConsensus()) { //there is no consensus in execution
@@ -554,7 +565,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                if(this.controller.getStaticConf().getProcessId()==0 && execId==1000) {
 //                    System.exit(100);
 //                }
-                pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }
@@ -585,8 +595,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
                 long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
                 long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
-                logger.debug("writeStageLatency: {}, acceptSageLatency: {}, writeAndAcceptLatency: {}", writeStageLatency, acceptSageLatency, writeAndAcceptLatency);
-                logger.debug("dec.getDecisionEpoch().propValue.length: {}, this.controller.getCurrentViewOtherAcceptors().length: {}", dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
 
                 pipelineManager.collectConsensusPerformanceData(dec.getConsensusId(), writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
             }
