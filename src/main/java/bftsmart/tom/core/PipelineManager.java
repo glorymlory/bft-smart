@@ -251,11 +251,13 @@ public class PipelineManager {
 
     public boolean isAllowedToRunReconfiguration(int currentConsID) {
         SMMessage smMessage = reconfigurationSMMessagesQueue.peek();
-        int lastReconfigCid = reconfigurationCIDsQueue.peek();
-        if (isReconfigurationMode && smMessage != null
-                && (lastReconfigCid + maxAllowedConsensusesInExecFixed) == currentConsID) {
-            reconfigurationCIDsQueue.poll();
-            return true;
+        Integer lastReconfigCid = reconfigurationCIDsQueue.peek();
+        if (isReconfigurationMode) {
+            if (lastReconfigCid!=null && smMessage != null
+                    && (lastReconfigCid + maxAllowedConsensusesInExecFixed) == currentConsID) {
+                reconfigurationCIDsQueue.poll();
+                return true;
+            }
         }
         return false;
     }
