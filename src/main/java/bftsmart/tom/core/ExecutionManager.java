@@ -321,6 +321,20 @@ public final class ExecutionManager {
         return result;
     }
 
+    /*
+    * Removes consensus from the manager that is not being executed
+    */
+    public void removeNotDeliveredConsensus(int cid) {
+        consensusesLock.lock();
+        consensuses.remove(cid);
+        consensusesLock.unlock();
+
+        outOfContextLock.lock();
+        outOfContextProposes.remove(cid);
+        outOfContext.remove(cid);
+        outOfContextLock.unlock();
+    }
+
     /**
      * Removes a consensus from this manager
      * @param id ID of the consensus to be removed

@@ -199,7 +199,6 @@ public final class Acceptor {
 			/*****************************************/
 
 			// start this consensus if it is not already running
-//			we can not just check if the list of currently in exec. cons. contains this value. Because this value might be finished executing. (Probably not the case, because we dont remove values if they are out of context.)
 			if(cid >= (tomLayer.getLastExec() + 1) && cid <= (tomLayer.getLastExec() + executionManager.getPipelineManager().getMaxAllowedConsensusesInExecFixed())) {
 				tomLayer.setInExec(cid);
 			}

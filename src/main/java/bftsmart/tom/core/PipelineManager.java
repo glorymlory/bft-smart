@@ -217,10 +217,15 @@ public class PipelineManager {
         return this.lastConsensusId.get();
     }
 
+    public void setLastConsensusId(long lastConsensusId) {
+        this.lastConsensusId.set(lastConsensusId);
+    }
+
     public void setPipelineInReconfigurationMode(int cid) {
         logger.debug("Reconfiguration mode for pipeline started");
         isReconfigurationMode = true;
         maxConsToStartInParallel = 1;
+        waitForNextConsensusTime = 0;
         reconfigurationCIDsQueue.add(cid);
     }
 

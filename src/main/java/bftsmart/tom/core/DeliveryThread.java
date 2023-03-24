@@ -29,6 +29,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.PriorityBlockingQueue;
@@ -151,11 +152,43 @@ public final class DeliveryThread extends Thread {
 
     private void processOutOfSequencePipelineDecision() {
         Decision decision = outOfSequenceValuesForDelivery.peek();
+
         logger.debug("Processing out of sequence value  {}", decision.getConsensusId());
         if (decision.getConsensusId() == tomLayer.getLastExec() + 1) {
             outOfSequenceValuesForDelivery.poll();
             delivery(decision);
         }
+    }
+
+    public void cleanUpOutOfSequenceValuesForDelivery() {
+        for(Decision decision: outOfSequenceValuesForDelivery) {
+            logger.debug("Cleaning up out of sequence values for delivery: {}", decision.getConsensusId());
+            tomLayer.clientsManager.resetRequestsToNotProposed(decision.getDeserializedValue());
+        }
+
+        for(Decision decision: outOfSequenceValuesForDelivery) {
+            logger.debug("Cleaning up out of sequence values for delivery: {}", decision.getConsensusId());
+            this.tomLayer.execManager.removeNotDeliveredConsensus(decision.getConsensusId());
+        }
+
+        this.outOfSequenceValuesForDelivery.clear();
+        tomLayer.pipelineManager.cleanUpConsensusesInExec();
+        logger.debug("Cleaned up out of sequence values for delivery");
+    }
+
+    public List<TOMMessage> getOutOfSequenceValuesForDelivery() {
+        List<TOMMessage> outOfSequenceValues = new ArrayList<>();
+        for(Decision decision: outOfSequenceValuesForDelivery) {
+            outOfSequenceValues.addAll(Arrays.asList(decision.getDeserializedValue()));
+        }
+        return outOfSequenceValues;
+    }
+
+    public int getLastOutOfSequenceValueForDelivery() {
+        if (outOfSequenceValuesForDelivery.isEmpty()) {
+            return -1;
+        }
+        return outOfSequenceValuesForDelivery.peek().getConsensusId();
     }
 
     private boolean containsReconfig(Decision dec) {

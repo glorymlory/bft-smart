@@ -247,6 +247,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
      */
     public boolean verifySignature(SignedObject so, int sender) {
         try {
+            logger.debug("Verifying signature of object " + so + " from replica " + sender);
             return so.verify(publicKey.get(sender), engine);
         } catch (Exception e) {
             logger.error("Failed to verify object signature", e);
@@ -445,7 +446,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
-            logger.debug("Next leader for CID=" + (pipelineManager.getLastConsensusId() + 1) + ": " + execManager.getCurrentLeader());
+
+            logger.debug("Next leader for CID=" + (Math.max(pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution()), getLastExec()) + 1) + ": " + execManager.getCurrentLeader());
 
             //******* EDUARDO BEGIN **************//
             if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
@@ -457,16 +459,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
-            // blocks until the current consensus finishes
-            proposeLock.lock();
-            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
-                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
-                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
-                canPropose.awaitUninterruptibly();
-            }
-            proposeLock.unlock();
-
-            if (!doWork) break;
             logger.info("I'm the leader.");
 
             // blocks until there are requests to be processed/ordered
@@ -490,6 +482,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 setDelayBeforeConsStartInPipeline();
                 logger.debug("Continue ...");
             }
+
+            if (!doWork) break;
+
+            // blocks until the current consensus finishes
+            proposeLock.lock();
+            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
+                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
+                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
+                canPropose.awaitUninterruptibly();
+            }
+            proposeLock.unlock();
 
             if (!doWork) break;
 
@@ -517,24 +521,23 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //            }
 //            proposePipelineLock.unlock();
 
-
-            proposeLock.lock();
-            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
-            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
-                logger.debug("");
-                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
-                canPropose.awaitUninterruptibly();
-            }
-            proposeLock.unlock();
-
-            if (!doWork) break;
-
             if ((execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) && //I'm the leader
                     (clientsManager.havePendingRequests()) && //there are messages to be ordered
                     pipelineManager.isAllowedToStartNewConsensus()) { //there is no consensus in execution
 
                 // Sets the current consensus
-                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
+                readPipelineCIDLock.lock();
+                // find the biggest elemen in the list and add 1
+                int maxCIDInExec = pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution());
+                int maxCIDinOutOfSeq = dt.getLastOutOfSequenceValueForDelivery();
+                int maxValue = Math.max(maxCIDInExec, getLastExec());
+                maxValue = Math.max(maxValue, maxCIDinOutOfSeq);
+                int execId = maxValue + 1;
+                readPipelineCIDLock.unlock();
+//                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
+                if(this.controller.getStaticConf().getProcessId()==0 && execId==30) {
+                    execId = 31;
+                }
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();
@@ -560,11 +563,12 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
                 }
 
+                if(this.controller.getStaticConf().getProcessId()==0 && execId==38) {
+                    logger.debug("================================================ EXITING SYSTEM ===============================================");
+                    System.exit(2);
+                }
+
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
-//                check replica id , and exit SYstem.exit();
-//                if(this.controller.getStaticConf().getProcessId()==0 && execId==1000) {
-//                    System.exit(100);
-//                }
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
             }
         }

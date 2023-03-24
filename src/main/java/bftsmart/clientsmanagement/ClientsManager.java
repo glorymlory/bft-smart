@@ -123,7 +123,7 @@ public class ClientsManager {
             Iterator<Entry<Integer, ClientData>> it = clientsEntryList.iterator();
             int noMoreMessages = 0;
             
-            logger.debug("Fetching requests with internal index {}", i);
+//            logger.debug("Fetching requests with internal index {}", i);
             
             while (it.hasNext()
                     && allReq.size() < controller.getStaticConf().getMaxBatchSize()
@@ -134,7 +134,7 @@ public class ClientsManager {
 
                 clientData.clientLock.lock();
 
-                logger.debug("Number of pending requests for client {}: {}.", clientData.getClientId(), clientPendingRequests.size());
+//                logger.debug("Number of pending requests for client {}: {}.", clientData.getClientId(), clientPendingRequests.size());
 
                 /******* BEGIN CLIENTDATA CRITICAL SECTION ******/
                 TOMMessage request = (clientPendingRequests.size() > i) ? clientPendingRequests.get(i) : null;
@@ -145,7 +145,7 @@ public class ClientsManager {
                 if (request != null) {
                     if(!request.alreadyProposed) {
                         
-                        logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
+//                        logger.debug("Selected request with sequence number {} from client {}", request.getSequence(), request.getSender());
                         
                         //this client have pending message
                         request.alreadyProposed = true;
@@ -393,7 +393,7 @@ public class ClientsManager {
                     clientData.verifySignature(request.serializedMessage,
                             request.serializedMessageSignature))) {
                 
-                logger.debug("Message from client {} is valid", clientData.getClientId());
+//                logger.debug("Message from client {} is valid", clientData.getClientId());
 
                 //I don't have the message but it is valid, I will
                 //insert it in the pending requests of this client
@@ -489,6 +489,22 @@ public class ClientsManager {
 
         /******* END CLIENTDATA CRITICAL SECTION ******/
         clientData.clientLock.unlock();
+    }
+
+    /**
+     * For all given requests find in the pending and set alreadyProposed to false
+     */
+    public void resetRequestsToNotProposed(TOMMessage[] requests) {
+        clientsLock.lock();
+
+        for(TOMMessage request:requests) {
+            ClientData clientData = getClientData(request.getSender());
+            clientData.clientLock.lock();
+            clientData.changeRequestToNotProposed(request);
+            clientData.clientLock.unlock();
+        }
+
+        clientsLock.unlock();
     }
 
     public ReentrantLock getClientsLock() {

@@ -133,6 +133,10 @@ public class ClientData {
         return false;
     }
 
+    public void changeRequestToNotProposed(TOMMessage request) {
+        pendingRequests.getById(request.getId()).alreadyProposed = false;
+    }
+
     public boolean removeRequest(TOMMessage request) {
 	lastMessageDelivered = request.getSequence();
 	boolean result = pendingRequests.remove(request);

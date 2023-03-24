@@ -123,6 +123,10 @@ public class Synchronizer {
         requestsTimer.stopTimer();
         requestsTimer.Enabled(false);
 
+        tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
+        tom.setInExec(tom.getLastExec()+1);
+//        requestList.addAll(tom.getDeliveryThread().getOutOfSequenceValuesForDelivery());
+
 	// still not in the leader change phase?
         if (lcManager.getNextReg() == lcManager.getLastReg()) {
 
@@ -449,6 +453,9 @@ public class Synchronizer {
         } else {
             condition = lcManager.getStopsSize(nextReg) > 0;
         }
+
+        tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
+        tom.setInExec(tom.getLastExec()+1);
         
         // Ask to start the synchronizations phase if enough messages have been received already
         if (condition && lcManager.getNextReg() == lcManager.getLastReg()) {
@@ -706,7 +713,6 @@ public class Synchronizer {
 
                     lastDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, decision, proof);
                     // TODO: WILL BE NECESSARY TO ADD A PROOF!!!??
-
                 } else {                    
                     lastDec = new CertifiedDecision(this.controller.getStaticConf().getProcessId(), last, null, null);
 
@@ -729,8 +735,8 @@ public class Synchronizer {
                             logger.debug("Propose hash for cid " + last + ": " + Base64.encodeBase64String(tom.computeHash(cons.getDecisionEpoch().propValue)));
                         }
                     }
-                    
                 }
+
                 lcManager.addLastCID(regency, lastDec);
 
                 if (in > -1) { // content of cid being executed
@@ -811,11 +817,12 @@ public class Synchronizer {
             case TOMUtil.STOP: { // message STOP
 
                 logger.info("Last regency: " + lcManager.getLastReg() + ", next regency: " + lcManager.getNextReg());
-
                 // this message is for the next leader change?
                 if (msg.getReg() == lcManager.getLastReg() + 1) {
 
                     logger.debug("Received regency change request");
+                    tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
+                    tom.setInExec(tom.getLastExec()+1);
 
                     TOMMessage[] requests = deserializeTOMMessages(msg.getPayload());
 

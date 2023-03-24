@@ -57,7 +57,6 @@ public class MessageHandler {
 			ConsensusMessage consMsg = (ConsensusMessage) sm;
 
 			if (consMsg.authenticated || consMsg.getSender() == myId) {
-				logger.debug("deliver in processData in MessageHandler");
 				acceptor.deliver(consMsg);
 			}
 			else {
@@ -115,11 +114,12 @@ public class MessageHandler {
 						break;
 					case TOMUtil.SM_ASK_INITIAL:
 						logger.debug("ASK INITIAL: {}", smsg.getCID());
-						if(tomLayer.pipelineManager.isReconfigurationMode()) {
+						if(tomLayer.pipelineManager.isReconfigurationMode() && !tomLayer.pipelineManager.getConsensusesInExecution().isEmpty()) {
 								logger.debug("We received ASK INITIAL cid and scheduled a reconfiguration mode.");
 								tomLayer.pipelineManager.scheduleReplicaReconfiguration(smsg);
 						} else {
 							tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
+							tomLayer.pipelineManager.setPipelineOutOfReconfigurationMode();
 						}
 						break;
 					case TOMUtil.SM_REPLY_INITIAL:

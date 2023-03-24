@@ -682,7 +682,7 @@ public class LCManager {
         HashSet<SignedObject> c = collects.get(regency);
 
         if (c == null) return null;
-
+        logger.debug("Selecting collects from regency " + regency + " and CID " + cid);
         return normalizeCollects(getSignedCollects(c), cid, regency);
         
     }
