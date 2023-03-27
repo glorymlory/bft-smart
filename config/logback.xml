@@ -49,26 +49,26 @@
 <!--    <logger name="bftsmart.statemanagement.StateManager" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.statemanagement.durability.DurableStateManager" level="TRACE"></logger>-->
     <logger name="bftsmart.tom.core.DeliveryThread" level="TRACE"></logger>
-    <logger name="bftsmart.tom.core.Synchronizer" level="TRACE"></logger>
+<!--    <logger name="bftsmart.tom.core.Synchronizer" level="TRACE"></logger>-->
     <logger name="bftsmart.tom.core.TOMLayer" level="TRACE"></logger>
     <logger name="bftsmart.tom.core.PipelineManager" level="TRACE"></logger>
     <logger name="bftsmart.consensus.roles.Acceptor" level="TRACE"></logger>
 <!--    <logger name="bftsmart.tom.ServiceReplica" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.communication.client.netty.NettyClientServerCommunicationSystemServerSide" level="TRACE"></logger>-->
-    <logger name="bftsmart.consensus.Consensus" level="TRACE"></logger>
-    <logger name="bftsmart.consensus.Decision" level="TRACE"></logger>
+<!--    <logger name="bftsmart.consensus.Consensus" level="TRACE"></logger>-->
+<!--    <logger name="bftsmart.consensus.Decision" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.reconfiguration.*" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.statemanagement.*" level="TRACE"></logger>-->
-    <logger name="bftsmart.clientsmanagement.ClientsManager" level="TRACE"></logger>
-    <logger name="bftsmart.tom.leaderchange.LCManager" level="TRACE"></logger>
-    <logger name="bftsmart.tom.leaderchange.LCMessage" level="TRACE"></logger>
+<!--    <logger name="bftsmart.clientsmanagement.ClientsManager" level="TRACE"></logger>-->
+<!--    <logger name="bftsmart.tom.leaderchange.LCManager" level="TRACE"></logger>-->
+<!--    <logger name="bftsmart.tom.leaderchange.LCMessage" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.tom.leaderchange.CollectData" level="TRACE"></logger>-->
-    <logger name="bftsmart.tom.leaderchange.RequestsTimer" level="TRACE"></logger>
+<!--    <logger name="bftsmart.tom.leaderchange.RequestsTimer" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.tom.core.ReplyManager" level="TRACE"></logger>-->
     <logger name="bftsmart.tom.core.ExecutionManager" level="TRACE"></logger>
 <!--    <logger name="bftsmart.communication.server.ServersCommunicationLayer" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.communication.server.ServerConnection" level="TRACE"></logger>-->
-    <logger name="bftsmart.communication.MessageHandler" level="TRACE"></logger>
+<!--    <logger name="bftsmart.communication.MessageHandler" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.tom.util.BatchBuilder" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.communication.server.ServersCommunicationLayer" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.communication.server.ServerConnection" level="TRACE"></logger>-->

@@ -119,7 +119,9 @@ public class MessageHandler {
 								tomLayer.pipelineManager.scheduleReplicaReconfiguration(smsg);
 						} else {
 							tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
-							tomLayer.pipelineManager.setPipelineOutOfReconfigurationMode();
+							if(tomLayer.pipelineManager.isReconfigurationMode()) {
+								tomLayer.pipelineManager.setPipelineOutOfReconfigurationMode();
+							}
 						}
 						break;
 					case TOMUtil.SM_REPLY_INITIAL:
