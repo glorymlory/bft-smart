@@ -217,7 +217,7 @@ public class PipelineManager {
         return this.lastConsensusId.get();
     }
 
-    public void setLastConsensusId(long lastConsensusId) {
+    public void setHighestInitiatedCID(long lastConsensusId) {
         this.lastConsensusId.set(lastConsensusId);
     }
 

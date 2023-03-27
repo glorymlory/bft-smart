@@ -189,7 +189,7 @@ public abstract class StateManager {
     public void requestAppState(int cid) {
         lastCID = cid + 1;
         waitingCID = cid;
-        logger.debug("Updated waitingcid to " + cid);
+        logger.debug("Updated waiting cid to " + cid);
         appStateOnly = true;
         requestState();
     }

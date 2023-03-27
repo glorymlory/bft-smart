@@ -921,7 +921,7 @@ public class Synchronizer {
         ByteArrayOutputStream bos = null;
 
         CertifiedDecision lastHighestCID = lcManager.getHighestLastCID(regency);
-
+        tom.pipelineManager.setHighestInitiatedCID(lastHighestCID.getCID());
         int currentCID = lastHighestCID.getCID() + 1;
         HashSet<SignedObject> signedCollects = null;
         byte[] propose = null;
@@ -1003,6 +1003,7 @@ public class Synchronizer {
     private void finalise(int regency, CertifiedDecision lastHighestCID,
             HashSet<SignedObject> signedCollects, byte[] propose, int batchSize, boolean iAmLeader) {
 
+        tom.pipelineManager.setHighestInitiatedCID(lastHighestCID.getCID());
         int currentCID = lastHighestCID.getCID() + 1;
         logger.debug("Final stage of LC protocol");
         int me = this.controller.getStaticConf().getProcessId();

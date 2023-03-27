@@ -447,7 +447,8 @@ public final class TOMLayer extends Thread implements RequestReceiver {
             // blocks until this replica learns to be the leader for the current epoch of the current consensus
             leaderLock.lock();
 
-            logger.debug("Next leader for CID=" + (Math.max(pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution()), getLastExec()) + 1) + ": " + execManager.getCurrentLeader());
+//            logger.debug("Next leader for CID=" + (Math.max(pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution()), getLastExec()) + 1) + ": " + execManager.getCurrentLeader());
+            logger.debug("Next leader for CID=" + pipelineManager.getLastConsensusId() + ": " + execManager.getCurrentLeader());
 
             //******* EDUARDO BEGIN **************//
             if (execManager.getCurrentLeader() != this.controller.getStaticConf().getProcessId()) {
@@ -528,14 +529,14 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 // Sets the current consensus
                 readPipelineCIDLock.lock();
                 // find the biggest elemen in the list and add 1
-                int maxCIDInExec = pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution());
-                int maxCIDinOutOfSeq = dt.getLastOutOfSequenceValueForDelivery();
-                int maxValue = Math.max(maxCIDInExec, getLastExec());
-                maxValue = Math.max(maxValue, maxCIDinOutOfSeq);
-                int execId = maxValue + 1;
+//                int maxCIDInExec = pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution());
+//                int maxCIDinOutOfSeq = dt.getLastOutOfSequenceValueForDelivery();
+//                int maxValue = Math.max(maxCIDInExec, getLastExec());
+//                maxValue = Math.max(maxValue, maxCIDinOutOfSeq);
+                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
                 readPipelineCIDLock.unlock();
 //                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
-                if(this.controller.getStaticConf().getProcessId()==0 && execId==30) {
+                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 30) {
                     execId = 31;
                 }
                 setInExec(execId);
@@ -563,7 +564,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
                 }
 
-                if(this.controller.getStaticConf().getProcessId()==0 && execId==38) {
+                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 38) {
                     logger.debug("================================================ EXITING SYSTEM ===============================================");
                     System.exit(2);
                 }
@@ -587,7 +588,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread
 
-        if(pipelineManager.isAllowedToRunReconfiguration(dec.getConsensusId())) {
+        if (pipelineManager.isAllowedToRunReconfiguration(dec.getConsensusId())) {
             SMMessage smMessage = pipelineManager.getSMMessageToReconfigure();
             getStateManager().currentConsensusIdAsked(smMessage.getSender(), smMessage.getCID());
             pipelineManager.setPipelineOutOfReconfigurationMode();
@@ -595,7 +596,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         /* Adaptive pipeline code */
         if (execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
-            if(dec.firstMessageProposed != null && dec.getDecisionEpoch().propValue !=null && this.controller.getCurrentViewOtherAcceptors() !=null) {
+            if (dec.firstMessageProposed != null && dec.getDecisionEpoch().propValue != null && this.controller.getCurrentViewOtherAcceptors() != null) {
                 long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
                 long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
                 long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
