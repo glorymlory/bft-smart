@@ -127,18 +127,18 @@ public class PipelineManager {
         int highLoadSuggestedAmountOfConsInPipeline = 0;
         boolean isHighLoad = false;
 
-        if (countPendingRequests > (maxBatchSize)) {
-            highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
-            if (highLoadSuggestedAmountOfConsInPipeline <= consensusesInExecution.size()) {
-                highLoadSuggestedAmountOfConsInPipeline = consensusesInExecution.size() + 1;
-                isHighLoad = true;
-            }
-//            if(highLoadSuggestedAmountOfConsInPipeline >= 10){
-//                highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel;
-//                suggestedDelay = 20;
+//        if (countPendingRequests > (maxBatchSize)) {
+//            highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
+//            if (highLoadSuggestedAmountOfConsInPipeline <= consensusesInExecution.size()) {
+//                highLoadSuggestedAmountOfConsInPipeline = consensusesInExecution.size() + 1;
+//                isHighLoad = true;
 //            }
-            logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
-        }
+////            if(highLoadSuggestedAmountOfConsInPipeline >= 10){
+////                highLoadSuggestedAmountOfConsInPipeline = maxConsToStartInParallel;
+////                suggestedDelay = 20;
+////            }
+//            logger.debug("HIGH LOAD: Current suggested amount of cons in pipeline: {}", highLoadSuggestedAmountOfConsInPipeline);
+//        }
 
         if (!isReconfigurationMode) {
             updatePipelineConfiguration(Math.max(highLoadSuggestedAmountOfConsInPipeline, currentSuggestedAmountOfConsInPipeline), lastConsensusLatency, isHighLoad);

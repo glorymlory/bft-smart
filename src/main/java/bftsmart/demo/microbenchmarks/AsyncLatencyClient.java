@@ -227,7 +227,7 @@ public class AsyncLatencyClient {
                         }
                     }, this.reqType);
                     if (i > (this.numberOfOps / 2)) {
-                        System.out.println("Throughput: " + st.getCount() + " System.nanoTime() - last_send_instant: "+ (System.nanoTime() - last_send_instant));
+//                        System.out.println("Throughput: " + st.getCount() + " System.nanoTime() - last_send_instant: "+ (System.nanoTime() - last_send_instant));
 //                        st.store(reply_quorum_reached[0] - last_send_instant);
                     }
 
