@@ -536,9 +536,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
                 readPipelineCIDLock.unlock();
 //                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
-                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 30) {
-                    execId = 31;
-                }
+//                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 30) {
+//                    execId = 31;
+//                }
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();
@@ -564,10 +564,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     continue;
                 }
 
-                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 38) {
-                    logger.debug("================================================ EXITING SYSTEM ===============================================");
-                    System.exit(2);
-                }
+//                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 38) {
+//                    logger.debug("================================================ EXITING SYSTEM ===============================================");
+//                    System.exit(2);
+//                }
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
