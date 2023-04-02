@@ -383,7 +383,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             dt.deliverUnordered(msg, syncher.getLCManager().getLastReg());
         } else {
-//            logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
+            logger.debug("Received TOMMessage from client " + msg.getSender() + " with sequence number " + msg.getSequence() + " for session " + msg.getSession());
             if (clientsManager.requestReceived(msg, true, communication)) {
 
                 if (controller.getStaticConf().getBatchTimeout() == -1) {
