@@ -127,7 +127,7 @@ public class PipelineManager {
         int highLoadSuggestedAmountOfConsInPipeline = 0;
         boolean isHighLoad = false;
 
-//        if (countPendingRequests > (maxBatchSize)) {
+//        if (countPendingRequests > (2*maxBatchSize)) {
 //            highLoadSuggestedAmountOfConsInPipeline = countPendingRequests / maxBatchSize;
 //            if (highLoadSuggestedAmountOfConsInPipeline <= consensusesInExecution.size()) {
 //                highLoadSuggestedAmountOfConsInPipeline = consensusesInExecution.size() + 1;
