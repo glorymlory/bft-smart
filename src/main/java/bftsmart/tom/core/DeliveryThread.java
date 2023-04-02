@@ -372,12 +372,12 @@ public final class DeliveryThread extends Thread {
                         count++;
                     }
                     Decision lastDecision = decisions.get(decisions.size() - 1);
-                    // loop over consensus ids and log them
-//                    logger.debug("Decisions to deliver: {}", decisions.size());
-//                    for (int i = 0; i < consensusIds.length; i++) {
-//                        logger.debug("Consensus id: {}", consensusIds[i]);
-//                    }
-//                    logger.debug("Delivering messages from consensus {} to {}", consensusIds, consensusIds[consensusIds.length - 1]);
+//                     loop over consensus ids and log them
+                    logger.debug("Decisions to deliver: {}", decisions.size());
+                    for (int i = 0; i < consensusIds.length; i++) {
+                        logger.debug("Consensus id: {}", consensusIds[i]);
+                    }
+                    logger.debug("Delivering messages from consensus {} to {}", consensusIds, consensusIds[consensusIds.length - 1]);
                     deliverMessages(consensusIds, regenciesIds, leadersIds, cDecs, requests);
 
                     // ******* EDUARDO BEGIN ***********//

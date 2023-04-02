@@ -174,6 +174,12 @@ public class PipelineManager {
             waitForNextConsensusTime = getNewWaitForNextConsensusTime(newMaxConsInExec, latency, isHighLoad);
         }
 
+        if (newMaxConsInExec == 1) {
+            logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
+            maxConsToStartInParallel = 1;
+            waitForNextConsensusTime = 0;
+        }
+
         if (newMaxConsInExec == 0) { // should not be the case at all.
             logger.debug("Average suggested amount of consensuses in pipeline is 0. Should not be the case.");
             maxConsToStartInParallel = 1;
