@@ -464,18 +464,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
-            // blocks until the current consensus finishes
-            proposeLock.lock();
-            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
-            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
-                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
-                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
-                canPropose.awaitUninterruptibly();
-            }
-            proposeLock.unlock();
-
-            if (!doWork) break;
-
             logger.info("I'm the leader.");
 
             // blocks until there are requests to be processed/ordered
@@ -499,6 +487,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 setDelayBeforeConsStartInPipeline();
                 logger.debug("Continue ...");
             }
+
+            if (!doWork) break;
+
+            // blocks until the current consensus finishes
+            proposeLock.lock();
+            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
+                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
+                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
+                canPropose.awaitUninterruptibly();
+            }
+            proposeLock.unlock();
 
             if (!doWork) break;
 
