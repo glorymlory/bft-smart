@@ -585,11 +585,11 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 logger.debug("Current leader: {}", execManager.getCurrentLeader());
                 logger.debug("Current conf process: {}", this.controller.getStaticConf().getProcessId());
 
-                if( execId == 200 && 0 == this.controller.getStaticConf().getProcessId()) {
+                if( execId == 4000 && 0 == this.controller.getStaticConf().getProcessId()) {
                     systemExitTimestamp = System.nanoTime();
                     logger.debug("50th consensus started, time: {}, system exit timestamp : {}", startFirstConsensusTimestamp, systemExitTimestamp);
                     logger.debug("================================================ EXITING SYSTEM ===============================================");
-                    System.exit(2);
+                    System.exit(0);
                 }
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
