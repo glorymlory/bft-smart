@@ -434,6 +434,10 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures() == 1);
     }
 
+    long startFirstConsensusTimestamp = 0;
+    long systemExitTimestamp = 0;
+    boolean newConsensusStarted = false;
+
     /**
      * This is the main code for this thread. It basically waits until this
      * replica becomes the leader, and when so, proposes a value to the other
@@ -568,6 +572,25 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 //                    logger.debug("================================================ EXITING SYSTEM ===============================================");
 //                    System.exit(2);
 //                }
+
+                if(execId == 0 && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+                    startFirstConsensusTimestamp = System.nanoTime();
+                    logger.debug("First consensus started, time: {}", startFirstConsensusTimestamp);
+                } else if(execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId() && !newConsensusStarted) {
+                    startFirstConsensusTimestamp = System.nanoTime();
+                    newConsensusStarted = true;
+                    logger.debug("First consensus started, time: {}", startFirstConsensusTimestamp);
+                }
+                logger.debug("Starting consensus {}.", execId);
+                logger.debug("Current leader: {}", execManager.getCurrentLeader());
+                logger.debug("Current conf process: {}", this.controller.getStaticConf().getProcessId());
+
+                if( execId == 200 && 0 == this.controller.getStaticConf().getProcessId()) {
+                    systemExitTimestamp = System.nanoTime();
+                    logger.debug("50th consensus started, time: {}, system exit timestamp : {}", startFirstConsensusTimestamp, systemExitTimestamp);
+                    logger.debug("================================================ EXITING SYSTEM ===============================================");
+                    System.exit(2);
+                }
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
                 execManager.getProposer().startConsensus(execId, createPropose(dec));

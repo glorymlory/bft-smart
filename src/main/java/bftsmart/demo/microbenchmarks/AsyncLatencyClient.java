@@ -232,14 +232,14 @@ public class AsyncLatencyClient {
                     }
 
                     if (this.interval > 0 || this.rampup > 0) {
-                        Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
+//                        Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
                         if (this.rampup > 0) this.rampup -= 100;
                     }
                     
                     if (this.verbose) System.out.println("Sending " + (i + 1) + "th op");
                 }
 
-                Thread.sleep(200);//wait 100ms to receive the last replies
+                Thread.sleep(1000*1000);//wait 100ms to receive the last replies
                 
                 if(this.id == initId) {
                    System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = " + st.getAverage(true) / 1000 + " us ");
