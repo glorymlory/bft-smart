@@ -464,6 +464,18 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
+            // blocks until the current consensus finishes
+            proposeLock.lock();
+            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
+            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
+                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
+                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
+                canPropose.awaitUninterruptibly();
+            }
+            proposeLock.unlock();
+
+            if (!doWork) break;
+
             logger.info("I'm the leader.");
 
             // blocks until there are requests to be processed/ordered
@@ -487,18 +499,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                 setDelayBeforeConsStartInPipeline();
                 logger.debug("Continue ...");
             }
-
-            if (!doWork) break;
-
-            // blocks until the current consensus finishes
-            proposeLock.lock();
-            pipelineManager.decideOnMaxAmountOfConsensuses(clientsManager.countPendingRequests(), clientsManager.getTotalMessageSizeForPendingMsgs(), this.controller.getCurrentViewOtherAcceptors().length);
-            if (!pipelineManager.isAllowedToStartNewConsensus()) { //there are already max amount of consensus running
-                logger.debug("Waiting for consensus termination, highest last decided: " + this.getLastExec());
-                logger.debug("Waiting for any consensus in the list (" + pipelineManager.getConsensusesInExecution().toString() + ") termination.");
-                canPropose.awaitUninterruptibly();
-            }
-            proposeLock.unlock();
 
             if (!doWork) break;
 
@@ -532,17 +532,9 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
                 // Sets the current consensus
                 readPipelineCIDLock.lock();
-                // find the biggest elemen in the list and add 1
-//                int maxCIDInExec = pipelineManager.getConsensusesInExecution().isEmpty() ? -1 : Collections.max(pipelineManager.getConsensusesInExecution());
-//                int maxCIDinOutOfSeq = dt.getLastOutOfSequenceValueForDelivery();
-//                int maxValue = Math.max(maxCIDInExec, getLastExec());
-//                maxValue = Math.max(maxValue, maxCIDinOutOfSeq);
                 int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
                 readPipelineCIDLock.unlock();
-//                int execId = (int) pipelineManager.getNewConsensusIdAndIncrement();
-//                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 30) {
-//                    execId = 31;
-//                }
+
                 setInExec(execId);
 
                 Decision dec = execManager.getConsensus(execId).getDecision();
