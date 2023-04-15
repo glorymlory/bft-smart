@@ -124,7 +124,7 @@ public class Synchronizer {
         requestsTimer.Enabled(false);
 
         tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
-        tom.setInExec(tom.getLastExec()+1);
+//        tom.setInExec(tom.getLastExec()+1);
 //        requestList.addAll(tom.getDeliveryThread().getOutOfSequenceValuesForDelivery());
 
 	// still not in the leader change phase?
@@ -923,7 +923,6 @@ public class Synchronizer {
         CertifiedDecision lastHighestCID = lcManager.getHighestLastCID(regency);
         tom.pipelineManager.setHighestInitiatedCID(lastHighestCID.getCID());
         int currentCID = lastHighestCID.getCID() + 1;
-        this.tom.setInExec(currentCID);
         HashSet<SignedObject> signedCollects = null;
         byte[] propose = null;
         int batchSize = -1;

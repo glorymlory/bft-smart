@@ -15,6 +15,7 @@ limitations under the License.
 */
 package bftsmart.tom.core;
 
+import bftsmart.consensus.Consensus;
 import bftsmart.consensus.Decision;
 import bftsmart.reconfiguration.ServerViewController;
 import bftsmart.statemanagement.ApplicationState;
@@ -161,15 +162,23 @@ public final class DeliveryThread extends Thread {
     }
 
     public void cleanUpOutOfSequenceValuesForDelivery() {
-        for(Decision decision: outOfSequenceValuesForDelivery) {
-            logger.debug("Cleaning up out of sequence values for delivery: {}", decision.getConsensusId());
-            tomLayer.clientsManager.resetRequestsToNotProposed(decision.getDeserializedValue());
-        }
 
         for(Decision decision: outOfSequenceValuesForDelivery) {
             logger.debug("Cleaning up out of sequence values for delivery: {}", decision.getConsensusId());
+            tomLayer.clientsManager.resetRequestsToNotProposed(decision.getDeserializedValue());
             this.tomLayer.execManager.removeNotDeliveredConsensus(decision.getConsensusId());
         }
+
+        for (Integer cid: tomLayer.pipelineManager.getConsensusesInExecution()) {
+            Consensus consensus = tomLayer.execManager.getConsensus(cid);
+            tomLayer.clientsManager.resetRequestsToNotProposed(consensus.getDecision().getDeserializedValue());
+            this.tomLayer.execManager.removeNotDeliveredConsensus(cid);
+        }
+
+//        for (Decision decision : outOfSequenceValuesForDelivery) {
+//            logger.debug("Cleaning up out of sequence values for delivery: {}", decision.getConsensusId());
+//            this.tomLayer.execManager.removeNotDeliveredConsensus(decision.getConsensusId());
+//        }
 
         this.outOfSequenceValuesForDelivery.clear();
         tomLayer.pipelineManager.cleanUpConsensusesInExec();
