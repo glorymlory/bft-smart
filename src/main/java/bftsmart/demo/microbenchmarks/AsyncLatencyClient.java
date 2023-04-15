@@ -51,7 +51,7 @@ import java.util.concurrent.Future;
 public class AsyncLatencyClient {
 
     static int initId;
-    
+
     public static void main(String[] args) throws IOException {
         if (args.length < 8) {
             System.out.println("Usage: ... ThroughputLatencyClient <initial client id> <number of clients> <number of operations> <request size> <max interval (ms)> <read only?> <verbose?> <nosig | default | ecdsa>");
@@ -66,17 +66,17 @@ public class AsyncLatencyClient {
         boolean readOnly = Boolean.parseBoolean(args[5]);
         boolean verbose = Boolean.parseBoolean(args[6]);
         String sign = args[7];
-        
+
         int s = 0;
         if (!sign.equalsIgnoreCase("nosig")) s++;
         if (sign.equalsIgnoreCase("ecdsa")) s++;
-        
+
         if (s == 2 && Security.getProvider("SunEC") == null) {
-            
+
             System.out.println("Option 'ecdsa' requires SunEC provider to be available.");
             System.exit(0);
         }
-        
+
         Client[] clients = new Client[numThreads];
 
         for (int i = 0; i < numThreads; i++) {
@@ -89,14 +89,14 @@ public class AsyncLatencyClient {
             System.out.println("Launching client " + (initId + i));
             clients[i] = new AsyncLatencyClient.Client(initId + i, numberOfOps, requestSize, interval, readOnly, verbose, s);
         }
-        
+
         ExecutorService exec = Executors.newFixedThreadPool(clients.length);
         Collection<Future<?>> tasks = new LinkedList<>();
-        
+
         for (Client c : clients) {
             tasks.add(exec.submit(c));
         }
-        
+
         // wait for tasks completion
         for (Future<?> currTask : tasks) {
             try {
@@ -106,9 +106,9 @@ public class AsyncLatencyClient {
             }
 
         }
-    
+
         exec.shutdown();
-        
+
         System.out.println("All clients done.");
 
     }
@@ -138,13 +138,13 @@ public class AsyncLatencyClient {
             this.reqType = (readOnly ? TOMMessageType.UNORDERED_REQUEST : TOMMessageType.ORDERED_REQUEST);
             this.verbose = verbose;
             this.request = new byte[this.requestSize];
-            
+
             rand = new Random(System.nanoTime() + this.id);
             rand.nextBytes(request);
-            
+
             byte[] signature = new byte[0];
             Signature eng;
-            
+
             try {
 
                 if (sign > 0) {
@@ -186,14 +186,12 @@ public class AsyncLatencyClient {
             try {
 
                 Storage st = new Storage(this.numberOfOps / 2);
-                
+
                 if (this.verbose) System.out.println("Executing experiment for " + this.numberOfOps + " ops");
 
                 for (int i = 0; i < this.numberOfOps; i++) {
-                    
+
                     long last_send_instant = System.nanoTime();
-                    final long[] reply_quorum_reached = {0};
-                    System.out.println("last_send_instant " + last_send_instant);
                     this.serviceProxy.invokeAsynchRequest(this.request, new ReplyListener() {
 
                         private int replies = 0;
@@ -208,7 +206,6 @@ public class AsyncLatencyClient {
                         @Override
                         public void replyReceived(RequestContext context, TOMMessage reply) {
                             StringBuilder builder = new StringBuilder();
-                            System.out.println("current Receivced timestamp " + System.nanoTime());
                             builder.append("[RequestContext] id: " + context.getReqId() + " type: " + context.getRequestType());
                             builder.append("[TOMMessage reply] sender id: " + reply.getSender() + " Hash content: " + Arrays.toString(reply.getContent()));
                             if (verbose) System.out.println(builder.toString());
@@ -219,34 +216,30 @@ public class AsyncLatencyClient {
 
                             if (replies >= q) {
                                 if (verbose) System.out.println("[RequestContext] clean request context id: " + context.getReqId());
-                                reply_quorum_reached[0] = System.nanoTime();
-                                System.out.println("Throughput: " + st.getCount() + " reply_quorum_reached[0] - last_send_instant: "+ (reply_quorum_reached[0] - last_send_instant));
-                                st.store(reply_quorum_reached[0] - last_send_instant);
+                                st.store(System.nanoTime() - last_send_instant);
                                 serviceProxy.cleanAsynchRequest(context.getOperationId());
                             }
+
                         }
                     }, this.reqType);
-                    if (i > (this.numberOfOps / 2)) {
-//                        System.out.println("Throughput: " + st.getCount() + " System.nanoTime() - last_send_instant: "+ (System.nanoTime() - last_send_instant));
-//                        st.store(reply_quorum_reached[0] - last_send_instant);
-                    }
+                    if (i > (this.numberOfOps / 2)) st.store(System.nanoTime() - last_send_instant);
 
                     if (this.interval > 0 || this.rampup > 0) {
-//                        Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
+                        Thread.sleep(Math.max(rand.nextInt(this.interval) + 1, this.rampup));
                         if (this.rampup > 0) this.rampup -= 100;
                     }
-                    
+
                     if (this.verbose) System.out.println("Sending " + (i + 1) + "th op");
                 }
 
-                Thread.sleep(1000*1000);//wait 100ms to receive the last replies
-                
+                Thread.sleep(100);//wait 100ms to receive the last replies
+
                 if(this.id == initId) {
-                   System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = " + st.getAverage(true) / 1000 + " us ");
-                   System.out.println(this.id + " // Standard desviation for " + numberOfOps / 2 + " executions (-10%) = " + st.getDP(true) / 1000 + " us ");
-                   System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (all samples) = " + st.getAverage(false) / 1000 + " us ");
-                   System.out.println(this.id + " // Standard desviation for " + numberOfOps / 2 + " executions (all samples) = " + st.getDP(false) / 1000 + " us ");
-                   System.out.println(this.id + " // Maximum time for " + numberOfOps / 2 + " executions (all samples) = " + st.getMax(false) / 1000 + " us ");
+                    System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (-10%) = " + st.getAverage(true) / 1000 + " us ");
+                    System.out.println(this.id + " // Standard desviation for " + numberOfOps / 2 + " executions (-10%) = " + st.getDP(true) / 1000 + " us ");
+                    System.out.println(this.id + " // Average time for " + numberOfOps / 2 + " executions (all samples) = " + st.getAverage(false) / 1000 + " us ");
+                    System.out.println(this.id + " // Standard desviation for " + numberOfOps / 2 + " executions (all samples) = " + st.getDP(false) / 1000 + " us ");
+                    System.out.println(this.id + " // Maximum time for " + numberOfOps / 2 + " executions (all samples) = " + st.getMax(false) / 1000 + " us ");
                 }
 
             } catch (Exception e) {
