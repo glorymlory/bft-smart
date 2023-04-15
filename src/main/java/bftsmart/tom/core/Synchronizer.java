@@ -923,6 +923,7 @@ public class Synchronizer {
         CertifiedDecision lastHighestCID = lcManager.getHighestLastCID(regency);
         tom.pipelineManager.setHighestInitiatedCID(lastHighestCID.getCID());
         int currentCID = lastHighestCID.getCID() + 1;
+        this.tom.setInExec(currentCID);
         HashSet<SignedObject> signedCollects = null;
         byte[] propose = null;
         int batchSize = -1;
