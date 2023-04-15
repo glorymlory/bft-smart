@@ -171,8 +171,11 @@ public final class DeliveryThread extends Thread {
 
         for (Integer cid: tomLayer.pipelineManager.getConsensusesInExecution()) {
             Consensus consensus = tomLayer.execManager.getConsensus(cid);
-            tomLayer.clientsManager.resetRequestsToNotProposed(consensus.getDecision().getDeserializedValue());
             this.tomLayer.execManager.removeNotDeliveredConsensus(cid);
+            if(consensus == null || consensus.getDecision() == null || consensus.getDecision().getDeserializedValue() == null) {
+                continue;
+            }
+            tomLayer.clientsManager.resetRequestsToNotProposed(consensus.getDecision().getDeserializedValue());
         }
 
 //        for (Decision decision : outOfSequenceValuesForDelivery) {
