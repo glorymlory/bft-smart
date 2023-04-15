@@ -822,7 +822,7 @@ public class Synchronizer {
 
                     logger.debug("Received regency change request");
                     tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
-                    tom.setInExec(tom.getLastExec()+1);
+//                    tom.setInExec(tom.getLastExec()+1);
 
                     TOMMessage[] requests = deserializeTOMMessages(msg.getPayload());
 
