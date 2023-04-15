@@ -48,7 +48,7 @@
 <!--    <logger name="bftsmart.tom.leaderchange.*" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.statemanagement.StateManager" level="TRACE"></logger>-->
 <!--    <logger name="bftsmart.statemanagement.durability.DurableStateManager" level="TRACE"></logger>-->
-    <logger name="bftsmart.tom.core.DeliveryThread" level="TRACE"></logger>
+    <logger name="bftsmart.tom.core.DeliveryThread" level="INFO"></logger>
 <!--    <logger name="bftsmart.tom.core.Synchronizer" level="TRACE"></logger>-->
     <logger name="bftsmart.tom.core.TOMLayer" level="TRACE"></logger>
     <logger name="bftsmart.tom.core.PipelineManager" level="TRACE"></logger>

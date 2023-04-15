@@ -284,7 +284,7 @@ public final class ThroughputLatencyServer extends DefaultRecoverable{
 //        System.out.println("iterations : " + iterations  + " interval: " + interval);
 
         if(iterations % interval == 0) {
-            System.out.println(" timestamp: " + System.nanoTime());
+            System.out.println(" timestamp measure: " + System.nanoTime());
             if (context) System.out.println("--- (Context)  iterations: "+ iterations + " // regency: " + msgCtx.getRegency() + " // consensus: " + msgCtx.getConsensusId() + " ---");
             
             System.out.println("--- Measurements after "+ iterations+" ops ("+interval+" samples) ---");

@@ -124,7 +124,7 @@ public class Synchronizer {
         requestsTimer.Enabled(false);
 
         tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
-//        tom.setInExec(tom.getLastExec()+1);
+        tom.setInExec(tom.getLastExec()+1);
 //        requestList.addAll(tom.getDeliveryThread().getOutOfSequenceValuesForDelivery());
 
 	// still not in the leader change phase?
@@ -822,7 +822,7 @@ public class Synchronizer {
 
                     logger.debug("Received regency change request");
                     tom.getDeliveryThread().cleanUpOutOfSequenceValuesForDelivery();
-//                    tom.setInExec(tom.getLastExec()+1);
+                    tom.setInExec(tom.getLastExec()+1);
 
                     TOMMessage[] requests = deserializeTOMMessages(msg.getPayload());
 
