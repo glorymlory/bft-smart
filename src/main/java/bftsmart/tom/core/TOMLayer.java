@@ -434,10 +434,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
         return bb.makeBatch(pendingRequests, numberOfNonces, System.currentTimeMillis(), controller.getStaticConf().getUseSignatures() == 1);
     }
 
-    long startFirstConsensusTimestamp = 0;
-    long systemExitTimestamp = 0;
-    boolean newConsensusStarted = false;
-
     /**
      * This is the main code for this thread. It basically waits until this
      * replica becomes the leader, and when so, proposes a value to the other
@@ -481,7 +477,6 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             logger.debug("There are requests to be ordered. I will propose.");
 
-            //            TODO add lockers
             if (!pipelineManager.isDelayedBeforeNewConsensusStart()) {
                 logger.debug("Waiting {}ms before starting new consensus", pipelineManager.getAmountOfMillisecondsToWait());
                 setDelayBeforeConsStartInPipeline();
@@ -502,7 +497,7 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
             if (!doWork) break;
 
-//            TODO make it work, and run tests if it makes any difference in performance
+//            experiment with starting consensus only when WRITE message sent. It is not working properly after some changes.
 //            proposePipelineLock.lock();
 //            if (getInExec() != -1 && !pipelineManager.getConsensusesInExecution().isEmpty()) {
 //                int lastInPipelineExec = pipelineManager.getConsensusesInExecution().get(pipelineManager.getConsensusesInExecution().size() - 1);
@@ -559,30 +554,30 @@ public final class TOMLayer extends Thread implements RequestReceiver {
                     dt.delivery(dec);
                     continue;
                 }
-
+//Experiment code
 //                if (this.controller.getStaticConf().getProcessId() == 0 && execId == 38) {
 //                    logger.debug("================================================ EXITING SYSTEM ===============================================");
 //                    System.exit(2);
 //                }
 
-                if(execId == 0 && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
-                    startFirstConsensusTimestamp = System.nanoTime();
-                    logger.debug("First consensus started, time: {}", startFirstConsensusTimestamp);
-                } else if(execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId() && !newConsensusStarted) {
-                    startFirstConsensusTimestamp = System.nanoTime();
-                    newConsensusStarted = true;
-                    logger.debug("First consensus started, time: {}", startFirstConsensusTimestamp);
-                }
-                logger.debug("Starting consensus {}.", execId);
-                logger.debug("Current leader: {}", execManager.getCurrentLeader());
-                logger.debug("Current conf process: {}", this.controller.getStaticConf().getProcessId());
-
-                if( execId == 1500 && 0 == this.controller.getStaticConf().getProcessId()) {
-                    systemExitTimestamp = System.nanoTime();
-                    logger.debug("50th consensus started, time: {}, system exit timestamp : {}", startFirstConsensusTimestamp, systemExitTimestamp);
-                    logger.debug("================================================ EXITING SYSTEM ===============================================");
-                    System.exit(2);
-                }
+//                if(execId == 0 && execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
+//                    startFirstConsensusTimestamp = System.nanoTime();
+//                    logger.debug("First consensus started, time: {}", startFirstConsensusTimestamp);
+//                } else if(execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId() && !newConsensusStarted) {
+//                    startFirstConsensusTimestamp = System.nanoTime();
+//                    newConsensusStarted = true;
+//                    logger.debug("First consensus started, time: {}", startFirstConsensusTimestamp);
+//                }
+//                logger.debug("Starting consensus {}.", execId);
+//                logger.debug("Current leader: {}", execManager.getCurrentLeader());
+//                logger.debug("Current conf process: {}", this.controller.getStaticConf().getProcessId());
+//
+//                if( execId == 100 && 0 == this.controller.getStaticConf().getProcessId()) {
+//                    systemExitTimestamp = System.nanoTime();
+//                    logger.debug("50th consensus started, time: {}, system exit timestamp : {}", startFirstConsensusTimestamp, systemExitTimestamp);
+//                    logger.debug("================================================ EXITING SYSTEM ===============================================");
+//                    System.exit(2);
+//                }
 
                 logger.info("===== Start Consensus {} ======, timestamp: {}", execId, System.nanoTime());
                 execManager.getProposer().startConsensus(execId, createPropose(dec));
@@ -603,20 +598,21 @@ public final class TOMLayer extends Thread implements RequestReceiver {
 
         this.dt.delivery(dec); // Sends the decision to the delivery thread
 
+        /* pipeline reconfiguration mode code */
         if (pipelineManager.isAllowedToRunReconfiguration(dec.getConsensusId())) {
             SMMessage smMessage = pipelineManager.getSMMessageToReconfigure();
             getStateManager().currentConsensusIdAsked(smMessage.getSender(), smMessage.getCID());
             pipelineManager.setPipelineOutOfReconfigurationMode();
         }
 
-        /* Adaptive pipeline code */
+        /* Adaptive pipeline code for collecting latency and other properties*/
         if (execManager.getCurrentLeader() == this.controller.getStaticConf().getProcessId()) {
             if (dec.firstMessageProposed != null && dec.getDecisionEpoch().propValue != null && this.controller.getCurrentViewOtherAcceptors() != null) {
                 long writeStageLatency = dec.firstMessageProposed.acceptSentTime - dec.firstMessageProposed.writeSentTime;
                 long acceptSageLatency = dec.firstMessageProposed.decisionTime - dec.firstMessageProposed.acceptSentTime;
                 long writeAndAcceptLatency = writeStageLatency + acceptSageLatency;
 
-                pipelineManager.collectConsensusPerformanceData(dec.getConsensusId(), writeAndAcceptLatency, dec.getDecisionEpoch().propValue.length, this.controller.getCurrentViewOtherAcceptors().length);
+                pipelineManager.collectConsensusPerformanceData(dec.getConsensusId(), writeAndAcceptLatency);
             }
         }
     }

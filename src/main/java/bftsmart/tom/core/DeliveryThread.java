@@ -108,7 +108,6 @@ public final class DeliveryThread extends Thread {
     public void delivery(Decision dec) {
 
 //		Not sequential pipelining case. Adding to out of sequence values for delivery
-//        TODO last exec should be safe thread.
         if (dec.getConsensusId() > tomLayer.getLastExec() + 1) {
             logger.debug("Last finished consensus: {}, received DECIDED consensus to deliver: {}", tomLayer.getLastExec(), dec.getConsensusId());
             logger.info("Could not insert decision into decided queue, because value {} is out of sequence. Adding to out of sequence values for delivery", dec.getConsensusId());
@@ -146,11 +145,16 @@ public final class DeliveryThread extends Thread {
                 lastReconfig = dec.getConsensusId();
 
 //                TODO check we add a replica not remove it.
+//                reconfiguration request. Set pipeline to reconfiguration mode
                 this.tomLayer.pipelineManager.setPipelineInReconfigurationMode(lastReconfig);
             }
         }
     }
 
+    /**
+     * Processes out-of-sequence pipeline decisions. If the consensus ID of the decision
+     * matches the expected next decision, the out-of-sequence decision is delivered.
+     */
     private void processOutOfSequencePipelineDecision() {
         Decision decision = outOfSequenceValuesForDelivery.peek();
 
@@ -161,6 +165,12 @@ public final class DeliveryThread extends Thread {
         }
     }
 
+    /**
+     * Cleaning up during synchronization phase.
+     * Cleans up out-of-sequence values for delivery by resetting the associated requests
+     * to not proposed and removing not delivered consensus. Also, clears the
+     * outOfSequenceValuesForDelivery queue and cleans up consensuses in execution.
+     */
     public void cleanUpOutOfSequenceValuesForDelivery() {
 
         for(Decision decision: outOfSequenceValuesForDelivery) {
@@ -170,18 +180,8 @@ public final class DeliveryThread extends Thread {
         }
 
         for (Integer cid: tomLayer.pipelineManager.getConsensusesInExecution()) {
-            Consensus consensus = tomLayer.execManager.getConsensus(cid);
             this.tomLayer.execManager.removeNotDeliveredConsensus(cid);
-//            if(consensus == null || consensus.getDecision() == null || consensus.getDecision().getDeserializedValue() == null) {
-//                continue;
-//            }
-//            tomLayer.clientsManager.resetRequestsToNotProposed(consensus.getDecision().getDeserializedValue());
         }
-
-//        for (Decision decision : outOfSequenceValuesForDelivery) {
-//            logger.debug("Cleaning up out of sequence values for delivery: {}", decision.getConsensusId());
-//            this.tomLayer.execManager.removeNotDeliveredConsensus(decision.getConsensusId());
-//        }
 
         this.outOfSequenceValuesForDelivery.clear();
         tomLayer.pipelineManager.cleanUpConsensusesInExec();

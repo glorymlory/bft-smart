@@ -116,7 +116,7 @@ public class MessageHandler {
 						logger.debug("ASK INITIAL: {}", smsg.getCID());
 						if(tomLayer.pipelineManager.isReconfigurationMode() && !tomLayer.pipelineManager.getConsensusesInExecution().isEmpty()) {
 								logger.debug("We received ASK INITIAL cid and scheduled a reconfiguration mode.");
-								tomLayer.pipelineManager.scheduleReplicaReconfiguration(smsg);
+								tomLayer.pipelineManager.saveMessageForLaterReconfiguration(smsg);
 						} else {
 							tomLayer.getStateManager().currentConsensusIdAsked(smsg.getSender(), smsg.getCID());
 							if(tomLayer.pipelineManager.isReconfigurationMode()) {
